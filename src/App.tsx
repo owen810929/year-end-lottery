@@ -48,8 +48,9 @@ function id(prefix: string) {
 }
 
 function normalizeLotteryStatus(value: unknown): LotteryStatus {
-  if (!LOTTERY_STATUSES.includes(value as LotteryStatus)) return defaultState.lotteryStatus;
-  return value === "drawing" || value === "revealing" ? "locked" : value;
+  const status = value as LotteryStatus;
+  if (!LOTTERY_STATUSES.includes(status)) return defaultState.lotteryStatus;
+  return status === "drawing" || status === "revealing" ? "locked" : status;
 }
 
 function normalizeDrawBatchSize(value: unknown) {
