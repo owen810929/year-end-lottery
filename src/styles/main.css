@@ -187,6 +187,8 @@ label span {
 }
 
 .prize-panel {
+  display: grid;
+  gap: 1.25rem;
   padding: 1.2rem;
   background: linear-gradient(135deg, rgba(215, 167, 60, .18), transparent), var(--paper);
 }
@@ -203,6 +205,42 @@ label span {
   color: var(--green);
   font-size: 1.8rem;
   line-height: 1.14;
+}
+
+.prize-info div {
+  color: #18201d;
+  font-weight: 700;
+}
+
+.prize-actions {
+  display: grid;
+  align-content: center;
+  gap: .75rem;
+}
+
+.prize-actions .batch-control {
+  width: 100%;
+  margin-top: 0;
+}
+
+.prize-actions .batch-control input {
+  max-width: none;
+}
+
+.prize-action-buttons {
+  margin-top: 0;
+}
+
+.prize-actions .primary {
+  width: 100%;
+  min-height: 72px;
+  border-radius: 14px;
+  font-size: 1.35rem;
+}
+
+.prize-actions .buttons button:not(.primary) {
+  min-height: 52px;
+  flex: 1 1 120px;
 }
 
 .machine {
@@ -240,7 +278,7 @@ label span {
 
 .slot-window {
   position: relative;
-  width: min(520px, 86%);
+  width: min(560px, 86%);
   height: 210px;
   overflow: hidden;
   border: 4px solid rgba(248, 217, 121, .9);
@@ -261,16 +299,20 @@ label span {
   height: 70px;
   display: grid;
   place-items: center;
-  margin: 0 10px;
+  box-sizing: border-box;
+  padding: 4px 12px;
   border-radius: 12px;
   color: var(--green);
   font-size: clamp(1.45rem, 3vw, 2.4rem);
   font-weight: 900;
   background: rgba(195, 59, 47, .08);
+  background-clip: content-box;
+  overflow-wrap: anywhere;
 }
 
 .reel-item.is-target {
   background: rgba(215, 167, 60, .24);
+  background-clip: content-box;
   color: #7d2e28;
   box-shadow: inset 0 0 0 2px rgba(215, 167, 60, .55);
 }
@@ -280,12 +322,13 @@ label span {
   left: 10px;
   right: 10px;
   top: 50%;
-  height: 74px;
+  height: 70px;
   transform: translateY(-50%);
   border: 3px solid rgba(215, 167, 60, .95);
   border-radius: 14px;
   pointer-events: none;
   z-index: 3;
+  box-sizing: border-box;
   box-shadow: 0 0 22px rgba(215, 167, 60, .5);
 }
 
@@ -319,23 +362,26 @@ label span {
 
 .winner {
   display: grid;
+  grid-column: 1 / -1;
   place-items: center;
-  min-height: 172px;
-  padding: 1.1rem;
+  align-content: center;
+  min-height: 300px;
+  padding: 1.4rem;
   text-align: center;
 }
 
 .winner p {
   margin: 0;
   color: var(--red);
-  font-size: .78rem;
+  font-size: .9rem;
   font-weight: 900;
 }
 
 .winner strong {
   color: var(--red);
-  font-size: 2.3rem;
-  line-height: 1.08;
+  font-size: clamp(4rem, 8vw, 7.2rem);
+  line-height: 1.02;
+  overflow-wrap: anywhere;
 }
 
 .winner span {
@@ -350,24 +396,24 @@ label span {
 }
 
 .batch-winner-grid {
-  width: min(100%, 620px);
+  width: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-  gap: .55rem;
-  margin: .45rem 0 .25rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: .75rem 0 .45rem;
 }
 
 .batch-winner-grid strong {
   display: grid;
   place-items: center;
-  min-height: 54px;
+  min-height: 92px;
   border: 1px solid rgba(195, 59, 47, .18);
-  border-radius: 8px;
+  border-radius: 14px;
   background: rgba(195, 59, 47, .08);
-  padding: .5rem;
+  padding: .7rem;
   color: var(--red);
-  font-size: clamp(1.15rem, 4vw, 1.8rem);
-  line-height: 1.1;
+  font-size: clamp(2rem, 4vw, 4rem);
+  line-height: 1.08;
   overflow-wrap: anywhere;
 }
 
@@ -541,26 +587,27 @@ tr:last-child td {
   }
 
   .lottery-layout {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .title-panel,
   .action-panel,
-  .list-panel {
+  .list-panel,
+  .winner {
     grid-column: 1 / -1;
   }
 
-  .machine,
-  .winner {
+  .prize-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    align-items: center;
+  }
+
+  .machine {
     min-height: 280px;
   }
 
-  .winner strong {
-    font-size: 3.4rem;
-  }
-
-  .batch-winner-grid strong {
-    font-size: 1.8rem;
+  .winner {
+    min-height: 320px;
   }
 
   .settings-layout {
