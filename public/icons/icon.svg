@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="尾牙抽獎">
+  <rect width="512" height="512" rx="112" fill="#16392f"/>
+  <circle cx="256" cy="256" r="170" fill="#f5f1e8"/>
+  <path d="M146 204h220v178H146z" fill="#c33b2f"/>
+  <path d="M134 176h244v54H134z" fill="#e0b34b"/>
+  <path d="M228 176h56v206h-56z" fill="#f8d979"/>
+  <path d="M172 144c0-38 52-42 84 32 32-74 84-70 84-32 0 48-74 42-84 32-10 10-84 16-84-32z" fill="#f8d979"/>
+  <path d="M176 404h160" stroke="#16392f" stroke-width="22" stroke-linecap="round"/>
+</svg>

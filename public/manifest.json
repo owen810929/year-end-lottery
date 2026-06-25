@@ -1,0 +1,19 @@
+{
+  "name": "2027 年公司尾牙抽獎系統",
+  "short_name": "尾牙抽獎",
+  "description": "公司尾牙現場使用的抽獎 PWA",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f1e8",
+  "theme_color": "#16392f",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
