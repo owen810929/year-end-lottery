@@ -22,6 +22,8 @@ type StoredState = {
 };
 
 const STORAGE_KEY = "company-year-end-party-2027";
+const DEFAULT_EVENT_TITLE = "公司尾牙抽獎系統";
+const OLD_DEFAULT_EVENT_TITLES = new Set(["2027 年公司尾牙抽獎系統", "2027 年公司尾牙抽獎", "2027 年台素股份有限公司尾牙抽獎"]);
 const ITEM_HEIGHT = 70;
 const VISIBLE_ROWS = 3;
 const CENTER_INDEX = 1;
@@ -30,7 +32,7 @@ const REVEAL_DURATION_MS = 3000;
 const LOTTERY_STATUSES: LotteryStatus[] = ["editing", "ready", "locked", "drawing", "revealing", "completed"];
 
 const defaultState: StoredState = {
-  eventTitle: "2027 年公司尾牙抽獎系統",
+  eventTitle: DEFAULT_EVENT_TITLE,
   participants: [],
   prizes: [],
   lockedParticipants: [],
@@ -58,6 +60,11 @@ function normalizeDrawBatchSize(value: unknown) {
   return Number.isFinite(size) && size > 0 ? Math.floor(size) : 1;
 }
 
+function normalizeEventTitle(value: unknown) {
+  const title = typeof value === "string" ? value.trim() : DEFAULT_EVENT_TITLE;
+  return OLD_DEFAULT_EVENT_TITLES.has(title) ? DEFAULT_EVENT_TITLE : title || DEFAULT_EVENT_TITLE;
+}
+
 function loadState(): StoredState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -66,6 +73,7 @@ function loadState(): StoredState {
     return {
       ...defaultState,
       ...parsed,
+      eventTitle: normalizeEventTitle(parsed.eventTitle),
       lotteryStatus: normalizeLotteryStatus(parsed.lotteryStatus),
       drawBatchSize: normalizeDrawBatchSize(parsed.drawBatchSize),
     };
@@ -422,12 +430,12 @@ export default function App() {
   return (
     <>
       <div className="app-shell">
-        <header className="app-header no-print"><div className="brand-mark">抽</div><div><p>2027 Company Year End Party</p><h1>{eventTitle}</h1></div></header>
+        <header className="app-header no-print"><div className="brand-mark">抽</div><div><p>Company Year End Party</p><h1>{eventTitle}</h1></div></header>
         <nav className="tabs no-print">{(["lottery", "participants", "prizes"] as TabId[]).map((tab) => <button key={tab} className={activeTab === tab ? "is-active" : ""} onClick={() => setActiveTab(tab)}>{tab === "lottery" ? "抽獎" : tab === "participants" ? "人員" : "獎項"}</button>)}</nav>
         <main>
           {activeTab === "lottery" && <section className="lottery-layout">
             <div className="panel title-panel no-print"><label><span>活動名稱</span><input disabled={!canEdit} value={eventTitle} onChange={(event) => { setEventTitle(event.target.value); touchEditing(); }} /></label><b className={`status status-${lotteryStatus}`}>{lotteryStatus}</b></div>
-            <section className="panel prize-panel"><p>目前獎項</p><h2>{currentPrize?.name ?? "尚未鎖定獎項"}</h2><div>{currentPrize ? `金額 ${currentPrize.amount.toLocaleString("zh-TW")}｜已抽 ${displayedDrawCount} / ${currentPrize.quota}` : "請先設定資料"}</div></section>
+            <section className="panel prize-panel"><div className="prize-info"><p>目前獎項</p><h2>{currentPrize?.name ?? "尚未鎖定獎項"}</h2><div>{currentPrize ? `金額 ${currentPrize.amount.toLocaleString("zh-TW")}｜已抽 ${displayedDrawCount} / ${currentPrize.quota}` : "請先設定資料"}</div></div><div className="prize-actions no-print">{!canEdit && lotteryStatus !== "completed" && <label className="batch-control"><span>每次抽出幾位</span><input type="number" min={1} max={maxBatchSize} value={drawBatchSize} disabled={lotteryStatus !== "locked" || !canDraw} onChange={(event) => updateDrawBatchSize(event.target.value)} /><small>最多可抽 {maxBatchSize} 位</small></label>}<div className="buttons prize-action-buttons">{canEdit ? <button className="primary" onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === "completed" ? <><button className="primary" onClick={() => window.print()}>列印 A4 中獎名單</button><button onClick={resetProgress}>Reset</button></> : <button className="primary" disabled={!canDraw} onClick={draw}>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "揭曉中" : drawBatchSize > 1 ? `抽出 ${Math.min(drawBatchSize, maxBatchSize)} 位` : "抽出下一位"}</button>}</div></div></section>
             <section className={`panel machine ${lotteryStatus === "drawing" ? "is-drawing" : ""}`}>
               <div className="slot-window">
                 <div className="slot-mask slot-mask-top" />
@@ -453,7 +461,7 @@ export default function App() {
               {lotteryStatus === "drawing" ? <strong>抽選中</strong> : latestDisplayWinners.length > 1 ? <div className="batch-winner-grid">{latestDisplayWinners.map((winner) => <strong key={winner.id}>{winner.name}</strong>)}</div> : <strong>{latestDisplayWinners[0]?.name ?? "尚無中獎人"}</strong>}
               <span>{winnerPanelNote}</span>
             </section>
-            <section className="panel action-panel no-print"><div className="stats"><span>可抽<b>{eligible.length}</b></span><span>剩餘<b>{pool.length}</b></span><span>已中獎<b>{winners.length}</b></span></div>{!canEdit && lotteryStatus !== "completed" && <label className="batch-control"><span>每次抽出幾位</span><input type="number" min={1} max={maxBatchSize} value={drawBatchSize} disabled={lotteryStatus !== "locked" || !canDraw} onChange={(event) => updateDrawBatchSize(event.target.value)} /><small>最多可抽 {maxBatchSize} 位</small></label>}{setupErrors.length > 0 && canEdit && <div className="alert">{setupErrors.map((error) => <p key={error}>{error}</p>)}</div>}<div className="buttons">{canEdit ? <button className="primary" onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === "completed" ? <><button className="primary" onClick={() => window.print()}>列印 A4 中獎名單</button><button onClick={resetProgress}>Reset</button></> : <button className="primary" disabled={!canDraw} onClick={draw}>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "揭曉中" : drawBatchSize > 1 ? `抽出 ${Math.min(drawBatchSize, maxBatchSize)} 位` : "抽出下一位"}</button>}</div></section>
+            <section className="panel action-panel no-print"><div className="stats"><span>可抽<b>{eligible.length}</b></span><span>剩餘<b>{pool.length}</b></span><span>已中獎<b>{winners.length}</b></span></div>{setupErrors.length > 0 && canEdit && <div className="alert">{setupErrors.map((error) => <p key={error}>{error}</p>)}</div>}</section>
             <WinnerTable winners={winners} />
           </section>}
           {activeTab === "participants" && <section className="settings-layout"><div className="panel form-panel"><h2>人員設定</h2>{!canEdit && <p className="alert">抽獎資料已鎖定，完成後 Reset 才能修改。</p>}<div className="form-grid"><label><span>部門</span><input disabled={!canEdit} value={participantDraft.department} onChange={(event) => setParticipantDraft({ ...participantDraft, department: event.target.value })} /></label><label><span>姓名</span><input disabled={!canEdit} value={participantDraft.name} onChange={(event) => setParticipantDraft({ ...participantDraft, name: event.target.value })} /></label><label><span>ID</span><input disabled={!canEdit || Boolean(participantEditingId)} value={participantDraft.id} onChange={(event) => setParticipantDraft({ ...participantDraft, id: event.target.value })} /></label><label className="check"><input disabled={!canEdit} type="checkbox" checked={participantDraft.eligible} onChange={(event) => setParticipantDraft({ ...participantDraft, eligible: event.target.checked })} />可參加抽獎</label></div><div className="buttons"><button disabled={!canEdit} onClick={saveParticipant}>{participantEditingId ? "儲存修改" : "新增人員"}</button></div></div><div className="panel form-panel"><h2>Excel 匯入</h2><textarea disabled={!canEdit} value={participantPaste} onChange={(event) => setParticipantPaste(event.target.value)} placeholder={"部門\t姓名\tID\n生產部\t王小明\tA001"} /><div className="buttons"><button disabled={!canEdit || !participantPaste.trim()} onClick={() => { setParticipants([...participants, ...parseParticipants(participantPaste)]); setParticipantPaste(""); touchEditing(); }}>匯入貼上內容</button><button disabled={!canEdit || !participants.length} onClick={() => window.confirm("清空人員？") && setParticipants([])}>清空人員</button></div></div><PeopleTable participants={participants} canEdit={canEdit} onEdit={(person) => { setParticipantDraft(person); setParticipantEditingId(person.id); }} onDelete={(personId) => setParticipants(participants.filter((person) => person.id !== personId))} /></section>}
