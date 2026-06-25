@@ -280,6 +280,22 @@ function removeAfterWinText(removeAfterWin: boolean) {
   return removeAfterWin ? "移出" : "可再中";
 }
 
+function poolModeBadgeText(mode: PrizePoolMode) {
+  return mode === "allEligible" ? "全部人員" : "剩餘人員";
+}
+
+function poolModeBadgeTitle(mode: PrizePoolMode) {
+  return mode === "allEligible" ? "從全部可抽人員中抽出，包含已中過其他獎的人" : "只從尚未被移出抽獎池的人員中抽出";
+}
+
+function removeAfterWinBadgeText(removeAfterWin: boolean) {
+  return removeAfterWin ? "中後移出" : "中後保留";
+}
+
+function removeAfterWinBadgeTitle(removeAfterWin: boolean) {
+  return removeAfterWin ? "中此獎後，後續不可再中一般獎" : "中此獎後，仍可再中其他獎";
+}
+
 function dateText(date = new Date()) {
   return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -500,8 +516,7 @@ export default function App() {
     }, SPIN_DURATION_MS);
   }
 
-  function resetProgress() {
-    if (!window.confirm("這會清除中獎結果與抽獎進度，但保留活動名稱、人員與獎項。是否繼續？")) return;
+  function clearLotteryProgress() {
     if (drawTimer.current) window.clearTimeout(drawTimer.current);
     if (revealTimer.current) window.clearTimeout(revealTimer.current);
     drawTimer.current = null;
@@ -517,6 +532,17 @@ export default function App() {
     setLotteryStatus(validate(participants, prizes).length ? "editing" : "ready");
   }
 
+  function resetProgress() {
+    if (!window.confirm("這會清除中獎結果與抽獎進度，但保留活動名稱、人員與獎項。是否繼續？")) return;
+    clearLotteryProgress();
+  }
+
+  function forceResetProgress() {
+    if (!window.confirm("確定要立刻 Reset 嗎？\n這會清除目前所有中獎結果與抽獎進度，但會保留人員與獎項設定。")) return;
+    if (!window.confirm("最後確認：中獎名單與抽獎進度會被清除，無法復原。是否繼續？")) return;
+    clearLotteryProgress();
+  }
+
   const winnerPanelTitle = lotteryStatus === "drawing" ? "抽選中" : latestDisplayWinners.length > 1 ? `本輪抽出 ${latestDisplayWinners.length} 位` : lotteryStatus === "revealing" ? "中獎人揭曉" : "等待抽獎";
   const winnerPanelNote = lotteryStatus === "drawing" ? "請等待滾輪停止" : latestDisplayWinners.length > 1 ? `${latestDisplayWinners[0]?.prizeName ?? "目前獎項"}｜已加入中獎清單` : latestDisplayWinners[0] ? `${latestDisplayWinners[0].department}｜${latestDisplayWinners[0].prizeName}` : "按下抽獎後會在此顯示";
 
@@ -528,7 +554,7 @@ export default function App() {
         <main>
           {activeTab === "lottery" && <section className="lottery-layout">
             <div className="panel title-panel no-print"><label><span>活動名稱</span><input disabled={!canEdit} value={eventTitle} onChange={(event) => { setEventTitle(event.target.value); touchEditing(); }} /></label><b className={`status status-${lotteryStatus}`}>{lotteryStatus}</b></div>
-            <section className="panel prize-panel"><div className="prize-info"><p>目前獎項</p><h2>{currentPrize?.name ?? "尚未鎖定獎項"}</h2><div>{currentPrize ? `金額 ${currentPrize.amount.toLocaleString("zh-TW")}｜已抽 ${displayedDrawCount} / ${currentPrize.quota}` : "請先設定資料"}</div><small>{currentPrize ? `${poolModeText(currentPrize.poolMode)}｜中獎後${currentPrize.removeAfterWin ? "移出後續抽獎池" : "仍可再中其他獎"}` : ""}</small></div><div className="prize-actions no-print">{!canEdit && lotteryStatus !== "completed" && <label className="batch-control"><span>每次抽出幾位</span><input type="number" min={1} max={Math.max(1, maxBatchSize)} value={drawBatchSize} disabled={lotteryStatus !== "locked" || !canDraw} onChange={(event) => updateDrawBatchSize(event.target.value)} /><small>最多可抽 {maxBatchSize} 位</small></label>}{currentPrizePoolWarning && <div className="draw-warning">目前獎項沒有可抽人員，請調整獎項設定或跳過此獎項。</div>}<div className="buttons prize-action-buttons">{canEdit ? <button className="primary" onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === "completed" ? <><button className="primary" onClick={() => window.print()}>列印 A4 中獎名單</button><button onClick={resetProgress}>Reset</button></> : <><button className="primary" disabled={!canDraw} onClick={draw}>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "揭曉中" : drawBatchSize > 1 ? `抽出 ${Math.min(drawBatchSize, maxBatchSize || drawBatchSize)} 位` : "抽出下一位"}</button>{currentPrizePoolWarning && <button onClick={skipCurrentPrize}>跳過此獎項</button>}</>}</div></div></section>
+            <section className="panel prize-panel"><div className="prize-info"><p>目前獎項</p><h2>{currentPrize?.name ?? "尚未鎖定獎項"}</h2>{currentPrize ? <><div className="prize-stat-row"><span className="prize-stat"><small>金額</small><b>NT$ {currentPrize.amount.toLocaleString("zh-TW")}</b></span><span className="prize-stat"><small>已抽</small><b>{displayedDrawCount} / {currentPrize.quota}</b></span></div><div className="prize-rule-badges"><span className={`rule-badge ${currentPrize.poolMode === "allEligible" ? "rule-badge-all" : "rule-badge-remaining"}`} title={poolModeBadgeTitle(currentPrize.poolMode)}>{poolModeBadgeText(currentPrize.poolMode)}</span><span className={`rule-badge ${currentPrize.removeAfterWin ? "rule-badge-remove" : "rule-badge-keep"}`} title={removeAfterWinBadgeTitle(currentPrize.removeAfterWin)}>{removeAfterWinBadgeText(currentPrize.removeAfterWin)}</span></div></> : <div className="prize-empty">請先設定資料</div>}</div><div className="prize-actions no-print">{!canEdit && lotteryStatus !== "completed" && <label className="batch-control"><span>每次抽出幾位</span><input type="number" min={1} max={Math.max(1, maxBatchSize)} value={drawBatchSize} disabled={lotteryStatus !== "locked" || !canDraw} onChange={(event) => updateDrawBatchSize(event.target.value)} /><small>最多可抽 {maxBatchSize} 位</small></label>}{currentPrizePoolWarning && <div className="draw-warning">目前獎項沒有可抽人員，請調整獎項設定或跳過此獎項。</div>}<div className="buttons prize-action-buttons">{canEdit ? <button className="primary" onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === "completed" ? <><button className="primary" onClick={() => window.print()}>列印 A4 中獎名單</button><button onClick={resetProgress}>Reset</button></> : <><button className="primary" disabled={!canDraw} onClick={draw}>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "揭曉中" : drawBatchSize > 1 ? `抽出 ${Math.min(drawBatchSize, maxBatchSize || drawBatchSize)} 位` : "抽出下一位"}</button>{currentPrizePoolWarning && <button onClick={skipCurrentPrize}>跳過此獎項</button>}</>}</div></div></section>
             <section className={`panel machine ${lotteryStatus === "drawing" ? "is-drawing" : ""}`}>
               <div className="slot-window" ref={slotWindowRef}>
                 <div className="slot-mask slot-mask-top" />
@@ -562,6 +588,7 @@ export default function App() {
           {activeTab === "prizes" && <section className="settings-layout"><div className="panel form-panel"><h2>獎項設定</h2>{!canEdit && <p className="alert">抽獎資料已鎖定，完成後 Reset 才能修改。</p>}<div className="form-grid"><label><span>順序</span><input disabled={!canEdit} type="number" min={1} value={prizeDraft.order} onChange={(event) => setPrizeDraft({ ...prizeDraft, order: Number(event.target.value) })} /></label><label><span>獎項名稱</span><input disabled={!canEdit} value={prizeDraft.name} onChange={(event) => setPrizeDraft({ ...prizeDraft, name: event.target.value })} /></label><label><span>金額</span><input disabled={!canEdit} type="number" min={0} value={prizeDraft.amount} onChange={(event) => setPrizeDraft({ ...prizeDraft, amount: Number(event.target.value) })} /></label><label><span>名額</span><input disabled={!canEdit} type="number" min={1} value={prizeDraft.quota} onChange={(event) => setPrizeDraft({ ...prizeDraft, quota: Number(event.target.value) })} /></label><label><span>抽獎池</span><select disabled={!canEdit} value={prizeDraft.poolMode} onChange={(event) => setPrizeDraft({ ...prizeDraft, poolMode: event.target.value as PrizePoolMode })}><option value="remaining">剩餘未中獎人</option><option value="allEligible">全部可抽人員</option></select></label><label><span>中獎後資格</span><select disabled={!canEdit} value={prizeDraft.removeAfterWin ? "remove" : "keep"} onChange={(event) => setPrizeDraft({ ...prizeDraft, removeAfterWin: event.target.value === "remove" })}><option value="remove">移出後續抽獎池</option><option value="keep">仍可再中其他獎</option></select></label><label className="wide"><span>備註</span><input disabled={!canEdit} value={prizeDraft.note ?? ""} onChange={(event) => setPrizeDraft({ ...prizeDraft, note: event.target.value })} /></label></div><div className="buttons"><button disabled={!canEdit} onClick={savePrize}>{prizeEditingId ? "儲存修改" : "新增獎項"}</button></div></div><div className="panel form-panel"><h2>Excel 匯入</h2><textarea disabled={!canEdit} value={prizePaste} onChange={(event) => setPrizePaste(event.target.value)} placeholder={"順序\t獎項名稱\t金額\t名額\t備註\t抽獎池\t中獎後\n1\t六獎\t1000\t20\t現金\t剩餘未中獎人\t移出後續抽獎池\n2\t特別獎\t3000\t5\t加碼獎\t全部可抽人員\t仍可再中其他獎"} /><div className="buttons"><button disabled={!canEdit || !prizePaste.trim()} onClick={() => { setPrizes([...prizes, ...parsePrizes(prizePaste)]); setPrizePaste(""); touchEditing(); }}>匯入貼上內容</button><button disabled={!canEdit || !prizes.length} onClick={() => window.confirm("清空獎項？") && setPrizes([])}>清空獎項</button></div></div><PrizeTable prizes={sortedPrizes} canEdit={canEdit} onEdit={(prize) => { setPrizeDraft(normalizePrize(prize)); setPrizeEditingId(prize.id); }} onDelete={(prizeId) => setPrizes(prizes.filter((prize) => prize.id !== prizeId))} /></section>}
         </main>
       </div>
+      <footer className="danger-zone no-print"><div><p>危險操作</p><span>立刻清除目前中獎結果與抽獎進度。人員與獎項設定會保留。</span></div><button className="danger-reset-button" type="button" onClick={forceResetProgress}>立刻 Reset</button></footer>
       <section className="print-only print-sheet"><header><p>中獎名單</p><h1>{eventTitle}</h1><time>{dateText()}</time></header><WinnerTable winners={winners} print /></section>
     </>
   );
