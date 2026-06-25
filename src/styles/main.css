@@ -349,6 +349,28 @@ label span {
   animation: reveal-pop .75s ease;
 }
 
+.batch-winner-grid {
+  width: min(100%, 620px);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: .55rem;
+  margin: .45rem 0 .25rem;
+}
+
+.batch-winner-grid strong {
+  display: grid;
+  place-items: center;
+  min-height: 54px;
+  border: 1px solid rgba(195, 59, 47, .18);
+  border-radius: 8px;
+  background: rgba(195, 59, 47, .08);
+  padding: .5rem;
+  color: var(--red);
+  font-size: clamp(1.15rem, 4vw, 1.8rem);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -369,6 +391,24 @@ label span {
 .stats b {
   color: var(--green);
   font-size: 1.35rem;
+}
+
+.batch-control {
+  display: grid;
+  gap: .35rem;
+  width: min(100%, 280px);
+  margin-top: 1rem;
+}
+
+.batch-control input {
+  max-width: 160px;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.batch-control small {
+  color: var(--muted);
+  font-size: .85rem;
 }
 
 .alert {
@@ -517,6 +557,10 @@ tr:last-child td {
 
   .winner strong {
     font-size: 3.4rem;
+  }
+
+  .batch-winner-grid strong {
+    font-size: 1.8rem;
   }
 
   .settings-layout {
