@@ -20,6 +20,12 @@ type StoredState = {
 };
 
 const STORAGE_KEY = "company-year-end-party-2027";
+const ITEM_HEIGHT = 70;
+const VISIBLE_ROWS = 3;
+const CENTER_INDEX = 1;
+const SPIN_DURATION_MS = 3200;
+const REVEAL_DURATION_MS = 3000;
+
 const defaultState: StoredState = {
   eventTitle: "2027 年公司尾牙抽獎系統",
   participants: [],
@@ -124,13 +130,50 @@ function validate(participants: Participant[], prizes: Prize[]) {
   return errors;
 }
 
-function drawWinner(pool: Participant[]) {
+function getSecureRandomIndex(length: number) {
+  if (length <= 0) throw new Error("抽獎名單不可為空。");
   if (!globalThis.crypto?.getRandomValues) throw new Error("此瀏覽器不支援安全隨機抽選。");
   const values = new Uint32Array(1);
-  const limit = 0xffffffff - (0xffffffff % pool.length);
+  const limit = 0xffffffff - (0xffffffff % length);
   do globalThis.crypto.getRandomValues(values);
   while (values[0] >= limit);
-  return pool[values[0] % pool.length];
+  return values[0] % length;
+}
+
+function secureShuffle<T>(items: T[]) {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = getSecureRandomIndex(index + 1);
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
+function drawWinner(pool: Participant[]) {
+  return pool[getSecureRandomIndex(pool.length)];
+}
+
+function buildReelItems(pool: Participant[], winner: Participant): Participant[] {
+  const fillerSource = pool.filter((person) => person.id !== winner.id);
+  const source = fillerSource.length > 0 ? fillerSource : pool;
+  const items: Participant[] = [];
+  const targetLength = Math.max(18, Math.min(30, pool.length * 4));
+
+  while (items.length < targetLength) {
+    items.push(...secureShuffle(source));
+  }
+
+  items.splice(targetLength);
+  items.push(...secureShuffle(source).slice(0, 4));
+  items.push(winner);
+  return items;
+}
+
+function findLastParticipantIndex(items: Participant[], target: Participant) {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (items[index].id === target.id) return index;
+  }
+  return items.length - 1;
 }
 
 function dateText(date = new Date()) {
@@ -156,6 +199,10 @@ export default function App() {
   const [prizeDraft, setPrizeDraft] = useState<Prize>({ id: "", order: 1, name: "", amount: 0, quota: 1, note: "" });
   const [prizeEditingId, setPrizeEditingId] = useState<string | null>(null);
   const [prizePaste, setPrizePaste] = useState("");
+  const [pendingWinner, setPendingWinner] = useState<Participant | null>(null);
+  const [reelItems, setReelItems] = useState<Participant[]>([]);
+  const [reelOffset, setReelOffset] = useState(0);
+  const [targetReelIndex, setTargetReelIndex] = useState(-1);
   const drawTimer = useRef<number | null>(null);
   const revealTimer = useRef<number | null>(null);
 
@@ -164,6 +211,7 @@ export default function App() {
   const eligible = participants.filter((person) => person.eligible);
   const currentPrize = lockedPrizes.length ? lockedPrizes[Math.min(currentPrizeIndex, lockedPrizes.length - 1)] : sortedPrizes[0];
   const pool = lockedParticipants.length ? lockedParticipants.filter((person) => remainingParticipantIds.includes(person.id)) : eligible;
+  const visibleReelItems = reelItems.length > 0 ? reelItems : pool.length > 0 ? pool.slice(0, VISIBLE_ROWS) : [{ id: "empty", department: "", name: "等待名單", eligible: false }];
   const canEdit = lotteryStatus === "editing" || lotteryStatus === "ready";
   const latestWinner = winners[winners.length - 1];
 
@@ -213,6 +261,10 @@ export default function App() {
     setCurrentPrizeIndex(0);
     setCurrentDrawCountInPrize(0);
     setRemainingParticipantIds(nextParticipants.map((person) => person.id));
+    setPendingWinner(null);
+    setReelItems([]);
+    setReelOffset(0);
+    setTargetReelIndex(-1);
     setLotteryStatus("locked");
     setActiveTab("lottery");
   }
@@ -223,9 +275,23 @@ export default function App() {
       setLotteryStatus("completed");
       return;
     }
+
+    const person = drawWinner(pool);
+    const nextReelItems = buildReelItems(pool, person);
+    const targetIndex = findLastParticipantIndex(nextReelItems, person);
+    const nextOffset = -(targetIndex - CENTER_INDEX) * ITEM_HEIGHT;
+
+    setPendingWinner(person);
+    setReelItems(nextReelItems);
+    setReelOffset(0);
+    setTargetReelIndex(targetIndex);
     setLotteryStatus("drawing");
+
+    window.requestAnimationFrame(() => {
+      setReelOffset(nextOffset);
+    });
+
     drawTimer.current = window.setTimeout(() => {
-      const person = drawWinner(pool);
       const winner: Winner = { id: id("winner"), prizeId: currentPrize.id, prizeName: currentPrize.name, amount: currentPrize.amount, participantId: person.id, department: person.department, name: person.name, drawnAt: new Date().toISOString() };
       const nextRemaining = remainingParticipantIds.filter((personId) => personId !== person.id);
       const nextCount = currentDrawCountInPrize + 1;
@@ -238,8 +304,11 @@ export default function App() {
       setCurrentDrawCountInPrize(moveNext ? 0 : nextCount);
       setLotteryStatus("revealing");
       drawTimer.current = null;
-      revealTimer.current = window.setTimeout(() => setLotteryStatus(completed ? "completed" : "locked"), 3000);
-    }, 1600);
+      revealTimer.current = window.setTimeout(() => {
+        setLotteryStatus(completed ? "completed" : "locked");
+        revealTimer.current = null;
+      }, REVEAL_DURATION_MS);
+    }, SPIN_DURATION_MS);
   }
 
   function resetProgress() {
@@ -250,6 +319,10 @@ export default function App() {
     setCurrentPrizeIndex(0);
     setCurrentDrawCountInPrize(0);
     setRemainingParticipantIds([]);
+    setPendingWinner(null);
+    setReelItems([]);
+    setReelOffset(0);
+    setTargetReelIndex(-1);
     setLotteryStatus(validate(participants, prizes).length ? "editing" : "ready");
   }
 
@@ -262,8 +335,27 @@ export default function App() {
           {activeTab === "lottery" && <section className="lottery-layout">
             <div className="panel title-panel no-print"><label><span>活動名稱</span><input disabled={!canEdit} value={eventTitle} onChange={(event) => { setEventTitle(event.target.value); touchEditing(); }} /></label><b className={`status status-${lotteryStatus}`}>{lotteryStatus}</b></div>
             <section className="panel prize-panel"><p>目前獎項</p><h2>{currentPrize?.name ?? "尚未鎖定獎項"}</h2><div>{currentPrize ? `金額 ${currentPrize.amount.toLocaleString("zh-TW")}｜已抽 ${currentDrawCountInPrize} / ${currentPrize.quota}` : "請先設定資料"}</div></section>
-            <section className={`panel machine ${lotteryStatus === "drawing" ? "is-drawing" : ""}`}><div className="reel">{[...pool.slice(0, 10), ...pool.slice(0, 10)].map((person, index) => <span key={`${person.id}-${index}`}>{person.name || "等待名單"}</span>)}</div></section>
-            <section className={`panel winner ${lotteryStatus === "revealing" ? "is-revealing" : ""}`}><p>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "中獎人揭曉" : "等待抽獎"}</p><strong>{latestWinner?.name ?? "尚無中獎人"}</strong><span>{latestWinner ? `${latestWinner.department}｜${latestWinner.prizeName}` : "按下抽獎後會在此顯示"}</span></section>
+            <section className={`panel machine ${lotteryStatus === "drawing" ? "is-drawing" : ""}`}>
+              <div className="slot-window">
+                <div className="slot-mask slot-mask-top" />
+                <div className="slot-center-line" />
+                <div
+                  className={`reel-track ${lotteryStatus === "drawing" ? "is-spinning" : ""}`}
+                  style={{
+                    transform: `translateY(${reelOffset}px)`,
+                    transition: lotteryStatus === "drawing" ? `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.12, 0.72, 0.18, 1)` : "none",
+                  }}
+                >
+                  {visibleReelItems.map((person, index) => (
+                    <div key={`${person.id}-${index}`} className={`reel-item ${pendingWinner?.id === person.id && index === targetReelIndex ? "is-target" : ""}`}>
+                      {person.name || "等待名單"}
+                    </div>
+                  ))}
+                </div>
+                <div className="slot-mask slot-mask-bottom" />
+              </div>
+            </section>
+            <section className={`panel winner ${lotteryStatus === "revealing" ? "is-revealing" : ""}`}><p>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "中獎人揭曉" : "等待抽獎"}</p><strong>{lotteryStatus === "drawing" ? "抽選中" : latestWinner?.name ?? "尚無中獎人"}</strong><span>{lotteryStatus === "drawing" ? "請等待滾輪停止" : latestWinner ? `${latestWinner.department}｜${latestWinner.prizeName}` : "按下抽獎後會在此顯示"}</span></section>
             <section className="panel action-panel no-print"><div className="stats"><span>可抽<b>{eligible.length}</b></span><span>剩餘<b>{pool.length}</b></span><span>已中獎<b>{winners.length}</b></span></div>{setupErrors.length > 0 && canEdit && <div className="alert">{setupErrors.map((error) => <p key={error}>{error}</p>)}</div>}<div className="buttons">{canEdit ? <button className="primary" onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === "completed" ? <><button className="primary" onClick={() => window.print()}>列印 A4 中獎名單</button><button onClick={resetProgress}>Reset</button></> : <button className="primary" disabled={lotteryStatus !== "locked"} onClick={draw}>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "揭曉中" : "抽出下一位"}</button>}</div></section>
             <WinnerTable winners={winners} />
           </section>}
