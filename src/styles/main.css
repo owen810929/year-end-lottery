@@ -25,6 +25,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -35,12 +36,14 @@ button {
 
 button:disabled,
 input:disabled,
+select:disabled,
 textarea:disabled {
   cursor: not-allowed;
   opacity: .58;
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -52,12 +55,22 @@ textarea {
   outline: none;
 }
 
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--green) 50%), linear-gradient(135deg, var(--green) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2.2rem;
+}
+
 textarea {
   resize: vertical;
   min-height: 148px;
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   border-color: var(--green-soft);
   box-shadow: 0 0 0 3px rgba(47, 102, 89, .16);
@@ -212,6 +225,13 @@ label span {
   font-weight: 700;
 }
 
+.prize-info small {
+  display: block;
+  margin-top: .45rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
 .prize-actions {
   display: grid;
   align-content: center;
@@ -241,6 +261,16 @@ label span {
 .prize-actions .buttons button:not(.primary) {
   min-height: 52px;
   flex: 1 1 120px;
+}
+
+.draw-warning {
+  border: 1px solid rgba(195, 59, 47, .24);
+  border-radius: 8px;
+  background: rgba(195, 59, 47, .08);
+  color: #8f2c24;
+  padding: .7rem;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .machine {
@@ -297,6 +327,7 @@ label span {
 
 .reel-item {
   height: 70px;
+  min-height: 0;
   display: grid;
   place-items: center;
   box-sizing: border-box;
@@ -524,7 +555,7 @@ td button {
 
 table {
   width: 100%;
-  min-width: 640px;
+  min-width: 820px;
   border-collapse: collapse;
   background: #fffefa;
 }
