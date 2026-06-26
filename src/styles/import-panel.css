@@ -1,0 +1,40 @@
+.import-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .75rem;
+}
+
+.import-panel-header h2 {
+  margin: 0;
+}
+
+.import-panel-header p {
+  margin: .35rem 0 0;
+  color: var(--muted);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+
+.import-panel-header button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  border: 1px solid var(--green);
+  border-radius: 10px;
+  background: #fffaf0;
+  color: var(--green);
+  padding: .45rem .8rem;
+  font-weight: 900;
+}
+
+@media (max-width: 720px) {
+  .import-panel-header {
+    display: grid;
+    gap: .75rem;
+  }
+
+  .import-panel-header button {
+    width: 100%;
+  }
+}
