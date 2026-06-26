@@ -5,6 +5,7 @@ import "./styles/main.css";
 import "./styles/import-panel.css";
 import "./styles/print.css";
 import "./styles/ui-polish.css";
+import "./styles/bonus-modal.css";
 
 function unregisterLegacyServiceWorkers() {
   if (!("serviceWorker" in navigator)) return;
