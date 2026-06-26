@@ -1,0 +1,218 @@
+.draw-host-chip,
+.draw-host-chip b {
+  font-family:
+    "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN",
+    "Yu Gothic",
+    "Yu Gothic UI",
+    "Noto Sans JP",
+    "Noto Sans TC",
+    "Microsoft JhengHei",
+    "PingFang TC",
+    system-ui,
+    sans-serif;
+}
+
+.draw-host-chip {
+  align-items: center;
+  line-height: 1.15;
+  overflow: visible;
+}
+
+.draw-host-chip span,
+.draw-host-chip b {
+  line-height: 1.15;
+}
+
+.draw-host-chip b {
+  overflow: visible;
+  font-weight: 900;
+  letter-spacing: .01em;
+  text-overflow: initial;
+  word-break: keep-all;
+}
+
+.lottery-layout > .list-panel,
+.lottery-layout > .list-panel .table-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+
+.lottery-layout > .list-panel .table-wrap {
+  overflow-x: auto;
+}
+
+@media (min-width: 721px) {
+  .lottery-layout > .list-panel .table-wrap table {
+    width: 100%;
+    min-width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+
+  .lottery-layout > .list-panel th:nth-child(1),
+  .lottery-layout > .list-panel td:nth-child(1) {
+    width: 10%;
+  }
+
+  .lottery-layout > .list-panel th:nth-child(2),
+  .lottery-layout > .list-panel td:nth-child(2) {
+    width: 26%;
+  }
+
+  .lottery-layout > .list-panel th:nth-child(3),
+  .lottery-layout > .list-panel td:nth-child(3) {
+    width: 16%;
+  }
+
+  .lottery-layout > .list-panel th:nth-child(4),
+  .lottery-layout > .list-panel td:nth-child(4) {
+    width: 20%;
+  }
+
+  .lottery-layout > .list-panel th:nth-child(5),
+  .lottery-layout > .list-panel td:nth-child(5) {
+    width: 28%;
+  }
+}
+
+@media (max-width: 720px) {
+  .draw-host-chip {
+    white-space: normal;
+  }
+
+  .draw-host-chip b {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .lottery-layout > .list-panel {
+    overflow: hidden;
+  }
+
+  .lottery-layout > .list-panel .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .lottery-layout > .list-panel .table-wrap table {
+    width: 720px;
+    min-width: 720px;
+    table-layout: auto;
+  }
+}
+
+@media print {
+  .print-sheet header {
+    display: grid !important;
+    align-items: start !important;
+    justify-content: stretch !important;
+    gap: 2mm !important;
+    margin: 0 0 10mm !important;
+    text-align: left !important;
+  }
+
+  .print-sheet header h1 {
+    order: 1;
+    margin: 0 !important;
+    font-size: 18pt !important;
+    font-weight: 900 !important;
+    line-height: 1.2;
+  }
+
+  .print-sheet header p {
+    order: 2;
+    margin: 0 !important;
+    font-size: 13pt !important;
+    font-weight: 800 !important;
+    line-height: 1.2;
+  }
+
+  .print-sheet header time {
+    order: 3;
+    display: block;
+    margin: 0 !important;
+    font-size: 10pt !important;
+    line-height: 1.2;
+  }
+
+  .print-sheet header time::before {
+    content: "列印日期：";
+  }
+
+  .print-sheet .table-wrap {
+    overflow: visible !important;
+    border: 0 !important;
+  }
+
+  .print-sheet table {
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+    background: #fff !important;
+    font-size: 9.5pt !important;
+  }
+
+  .print-sheet th,
+  .print-sheet td {
+    border: 1px solid #000 !important;
+    padding: 4px 6px !important;
+    color: #111 !important;
+    vertical-align: middle !important;
+  }
+
+  .print-sheet th {
+    background: #eee !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+  }
+
+  .print-sheet td {
+    text-align: left !important;
+  }
+
+  .print-sheet th:nth-child(1),
+  .print-sheet td:nth-child(1) {
+    width: 8%;
+  }
+
+  .print-sheet th:nth-child(2),
+  .print-sheet td:nth-child(2) {
+    width: 18%;
+  }
+
+  .print-sheet th:nth-child(3),
+  .print-sheet td:nth-child(3) {
+    width: 12%;
+  }
+
+  .print-sheet th:nth-child(4),
+  .print-sheet td:nth-child(4) {
+    width: 15%;
+  }
+
+  .print-sheet th:nth-child(5),
+  .print-sheet td:nth-child(5) {
+    width: 15%;
+  }
+
+  .print-sheet th:nth-child(6),
+  .print-sheet td:nth-child(6) {
+    width: 17%;
+  }
+
+  .print-sheet th:nth-child(7),
+  .print-sheet td:nth-child(7) {
+    width: 15%;
+  }
+
+  .print-sheet td:nth-child(1),
+  .print-sheet td:nth-child(3) {
+    text-align: right !important;
+  }
+
+  .print-sheet td:last-child {
+    height: 12mm;
+  }
+}
