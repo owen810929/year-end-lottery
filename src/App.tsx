@@ -23,11 +23,10 @@ type StoredState = {
 };
 
 const STORAGE_KEY = "company-year-end-party-2027";
+const APP_VERSION = "2026-06-26-ui-cache-fix";
 const DEFAULT_EVENT_TITLE = "公司尾牙抽獎系統";
 const OLD_DEFAULT_EVENT_TITLES = new Set(["2027 年公司尾牙抽獎系統", "2027 年公司尾牙抽獎", "2027 年台素股份有限公司尾牙抽獎"]);
-const ITEM_HEIGHT = 70;
 const VISIBLE_ROWS = 3;
-const CENTER_INDEX = 1;
 const SPIN_DURATION_MS = 3200;
 const REVEAL_DURATION_MS = 3000;
 const LOTTERY_STATUSES: LotteryStatus[] = ["editing", "ready", "locked", "drawing", "revealing", "completed"];
@@ -376,16 +375,14 @@ export default function App() {
   function calculateCenteredOffset(targetIndex: number) {
     const slot = slotWindowRef.current;
     const track = reelTrackRef.current;
-    if (!slot || !track) return -(targetIndex - CENTER_INDEX) * ITEM_HEIGHT;
+    if (!slot || !track) return 0;
 
     const target = track.querySelector<HTMLElement>(`[data-reel-index="${targetIndex}"]`);
-    if (!target) return -(targetIndex - CENTER_INDEX) * ITEM_HEIGHT;
+    if (!target) return 0;
 
-    const slotRect = slot.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-    const slotCenterY = slotRect.top + slotRect.height / 2;
-    const targetCenterY = targetRect.top + targetRect.height / 2;
-    return slotCenterY - targetCenterY;
+    const slotCenter = slot.clientHeight / 2;
+    const targetCenter = target.offsetTop + target.offsetHeight / 2;
+    return slotCenter - targetCenter;
   }
 
   function clearReelState() {
@@ -583,7 +580,7 @@ export default function App() {
                 >
                   {visibleReelItems.map((person, index) => {
                     const isTarget = index === targetReelIndex && pendingWinners.some((winner) => winner.id === person.id);
-                    return <div data-reel-index={index} key={`${person.id}-${index}`} className={`reel-item ${isTarget ? "is-target" : ""}`}>{person.name || "等待名單"}</div>;
+                    return <div data-reel-index={index} key={`${person.id}-${index}`} className={`reel-item ${isTarget ? "is-target" : ""}`}><div className="reel-item-content">{person.name || "等待名單"}</div></div>;
                   })}
                 </div>
                 <div className="slot-mask slot-mask-bottom" />
@@ -602,6 +599,7 @@ export default function App() {
         </main>
       </div>
       <footer className="danger-zone no-print"><div><p>危險操作</p><span>立刻清除目前中獎結果與抽獎進度。人員與獎項設定會保留。</span></div><button className="danger-reset-button" type="button" onClick={forceResetProgress}>立刻 Reset</button></footer>
+      <p className="app-version no-print">Version: {APP_VERSION}</p>
       <section className="print-only print-sheet"><header><p>中獎名單</p><h1>{eventTitle}</h1><time>{dateText()}</time></header><WinnerTable winners={winners} print /></section>
     </>
   );
