@@ -239,6 +239,10 @@
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    transform: none !important;
   }
 
   .print-sheet header {
@@ -285,6 +289,9 @@
     overflow: visible !important;
     border: 0 !important;
     box-sizing: border-box !important;
+    height: auto !important;
+    max-height: none !important;
+    transform: none !important;
   }
 
   .print-sheet table,
@@ -298,6 +305,25 @@
     table-layout: fixed !important;
     background: #fff !important;
     box-sizing: border-box !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .print-sheet thead,
+  .print-table thead {
+    display: table-header-group !important;
+  }
+
+  .print-sheet tbody,
+  .print-table tbody {
+    display: table-row-group !important;
+  }
+
+  .print-sheet tr,
+  .print-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: auto !important;
   }
 
   .print-sheet th,
@@ -305,14 +331,16 @@
   .print-table th,
   .print-table td {
     border: 1px solid #000 !important;
-    padding: 3px 4px !important;
+    padding: 2.5px 3px !important;
     color: #111 !important;
-    font-size: 8.5pt !important;
+    font-size: 8pt !important;
     line-height: 1.25 !important;
     vertical-align: middle !important;
     box-sizing: border-box !important;
     word-break: break-word !important;
     overflow-wrap: anywhere !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   .print-sheet th,
@@ -397,6 +425,7 @@
   .print-sheet td.signature,
   .print-table td:last-child,
   .print-table td.signature {
-    height: 10mm !important;
+    height: 8mm !important;
+    min-height: 8mm !important;
   }
 }
