@@ -22,6 +22,18 @@ type StoredState = {
   drawBatchSize: number;
 };
 
+type LatestDrawBatch = {
+  prizeId: string;
+  prizeName: string;
+  prizeIndexBefore: number;
+  drawCountBefore: number;
+  remainingParticipantIdsBefore: string[];
+  winnerIds: string[];
+  participantIds: string[];
+  prizePoolMode: PrizePoolMode;
+  removeAfterWin: boolean;
+};
+
 const STORAGE_KEY = "company-year-end-party-2027";
 const APP_VERSION = "2026-06-26-ui-cache-fix";
 const DEFAULT_EVENT_TITLE = "公司尾牙抽獎系統";
@@ -333,6 +345,7 @@ export default function App() {
   const [prizePaste, setPrizePaste] = useState("");
   const [pendingWinners, setPendingWinners] = useState<Participant[]>([]);
   const [latestBatchWinners, setLatestBatchWinners] = useState<Winner[]>([]);
+  const [latestDrawBatch, setLatestDrawBatch] = useState<LatestDrawBatch | null>(null);
   const [reelItems, setReelItems] = useState<Participant[]>([]);
   const [reelOffset, setReelOffset] = useState(0);
   const [targetReelIndex, setTargetReelIndex] = useState(-1);
@@ -357,6 +370,7 @@ export default function App() {
   const latestDisplayWinners = latestBatchWinners.length > 0 ? latestBatchWinners : latestWinner ? [latestWinner] : [];
   const displayedDrawCount = currentPrize && lotteryStatus === "completed" && currentPrizeIndex >= lockedPrizes.length ? currentPrize.quota : currentDrawCountInPrize;
   const currentPrizePoolWarning = !canEdit && lotteryStatus === "locked" && currentPrize && remainingQuotaForCurrentPrize > 0 && currentPrizePool.length === 0;
+  const canRerollLatestBatch = lotteryStatus !== "drawing" && latestDrawBatch !== null && latestDrawBatch.prizePoolMode === "allEligible" && latestDrawBatch.winnerIds.length > 0;
 
   useEffect(() => {
     const state: StoredState = { eventTitle, participants, prizes, lockedParticipants, lockedPrizes, winners, currentPrizeIndex, currentDrawCountInPrize, lotteryStatus, remainingParticipantIds, drawBatchSize };
@@ -428,6 +442,7 @@ export default function App() {
     setLockedPrizes(normalizedPrizes);
     setWinners([]);
     setLatestBatchWinners([]);
+    setLatestDrawBatch(null);
     setCurrentPrizeIndex(0);
     setCurrentDrawCountInPrize(0);
     setRemainingParticipantIds(nextParticipants.map((person) => person.id));
@@ -452,6 +467,7 @@ export default function App() {
     setCurrentPrizeIndex(nextPrizeIndex);
     setCurrentDrawCountInPrize(0);
     setLatestBatchWinners([]);
+    setLatestDrawBatch(null);
     clearReelState();
     setLotteryStatus(nextPrizeIndex >= lockedPrizes.length ? "completed" : "locked");
   }
@@ -472,6 +488,7 @@ export default function App() {
 
     setPendingWinners(selectedPeople);
     setLatestBatchWinners([]);
+    setLatestDrawBatch(null);
     setReelItems(nextReelItems);
     setTargetReelIndex(targetIndex);
     setReelPhase("resetting");
@@ -511,6 +528,17 @@ export default function App() {
 
       setWinners((items) => [...items, ...newWinners]);
       setLatestBatchWinners(newWinners);
+      setLatestDrawBatch({
+        prizeId: currentPrize.id,
+        prizeName: currentPrize.name,
+        prizeIndexBefore: currentPrizeIndex,
+        drawCountBefore: currentDrawCountInPrize,
+        remainingParticipantIdsBefore: [...remainingParticipantIds],
+        winnerIds: newWinners.map((winner) => winner.id),
+        participantIds: selectedPeople.map((person) => person.id),
+        prizePoolMode: currentPrize.poolMode,
+        removeAfterWin: currentPrize.removeAfterWin,
+      });
       setRemainingParticipantIds(nextRemaining);
       setCurrentPrizeIndex(nextPrizeIndex);
       setCurrentDrawCountInPrize(moveNext ? 0 : nextCount);
@@ -526,6 +554,39 @@ export default function App() {
     }, SPIN_DURATION_MS);
   }
 
+  function rerollLatestBatch() {
+    if (!latestDrawBatch) return;
+
+    if (latestDrawBatch.prizePoolMode !== "allEligible") {
+      window.alert("只有「全部可抽人員」的獎項可以重抽本輪。");
+      return;
+    }
+
+    const confirmed = window.confirm(`確定要重抽「${latestDrawBatch.prizeName}」本輪中獎人嗎？\n\n這會移除上一輪抽出的中獎人，並回到重抽前的抽獎進度。`);
+    if (!confirmed) return;
+
+    if (drawTimer.current) {
+      window.clearTimeout(drawTimer.current);
+      drawTimer.current = null;
+    }
+
+    if (revealTimer.current) {
+      window.clearTimeout(revealTimer.current);
+      revealTimer.current = null;
+    }
+
+    const winnerIdSet = new Set(latestDrawBatch.winnerIds);
+
+    setWinners((items) => items.filter((winner) => !winnerIdSet.has(winner.id)));
+    setLatestBatchWinners([]);
+    setCurrentPrizeIndex(latestDrawBatch.prizeIndexBefore);
+    setCurrentDrawCountInPrize(latestDrawBatch.drawCountBefore);
+    setRemainingParticipantIds([...latestDrawBatch.remainingParticipantIdsBefore]);
+    setLotteryStatus("locked");
+    setLatestDrawBatch(null);
+    clearReelState();
+  }
+
   function clearLotteryProgress() {
     if (drawTimer.current) window.clearTimeout(drawTimer.current);
     if (revealTimer.current) window.clearTimeout(revealTimer.current);
@@ -535,6 +596,7 @@ export default function App() {
     setLockedPrizes([]);
     setWinners([]);
     setLatestBatchWinners([]);
+    setLatestDrawBatch(null);
     setCurrentPrizeIndex(0);
     setCurrentDrawCountInPrize(0);
     setRemainingParticipantIds([]);
@@ -564,7 +626,7 @@ export default function App() {
         <main>
           {activeTab === "lottery" && <section className="lottery-layout">
             <div className="panel title-panel no-print"><label><span>活動名稱</span><input disabled={!canEdit} value={eventTitle} onChange={(event) => { setEventTitle(event.target.value); touchEditing(); }} /></label><b className={`status status-${lotteryStatus}`}>{lotteryStatus}</b></div>
-            <section className="panel prize-panel"><div className="prize-info"><p>目前獎項</p><h2>{currentPrize?.name ?? "尚未鎖定獎項"}</h2>{currentPrize?.drawHost && <div className="draw-host-chip" title="本獎項抽獎嘉賓"><span>抽獎人</span><b>{currentPrize.drawHost}</b></div>}{currentPrize ? <><div className="prize-stat-row"><span className="prize-stat"><small>金額</small><b>NT$ {currentPrize.amount.toLocaleString("zh-TW")}</b></span><span className="prize-stat"><small>已抽</small><b>{displayedDrawCount} / {currentPrize.quota}</b></span></div><div className="prize-rule-badges"><span className={`rule-badge ${currentPrize.poolMode === "allEligible" ? "rule-badge-all" : "rule-badge-remaining"}`} title={poolModeBadgeTitle(currentPrize.poolMode)}>{poolModeBadgeText(currentPrize.poolMode)}</span><span className={`rule-badge ${currentPrize.removeAfterWin ? "rule-badge-remove" : "rule-badge-keep"}`} title={removeAfterWinBadgeTitle(currentPrize.removeAfterWin)}>{removeAfterWinBadgeText(currentPrize.removeAfterWin)}</span></div></> : <div className="prize-empty">請先設定資料</div>}</div><div className="prize-actions no-print">{!canEdit && lotteryStatus !== "completed" && <label className="batch-control"><span>每次抽出幾位</span><input type="number" min={1} max={Math.max(1, maxBatchSize)} value={drawBatchSize} disabled={lotteryStatus !== "locked" || !canDraw} onChange={(event) => updateDrawBatchSize(event.target.value)} /><small>最多可抽 {maxBatchSize} 位</small></label>}{currentPrizePoolWarning && <div className="draw-warning">目前獎項沒有可抽人員，請調整獎項設定或跳過此獎項。</div>}<div className="buttons prize-action-buttons">{canEdit ? <button className="primary" onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === "completed" ? <><button className="primary" onClick={() => window.print()}>列印 A4 中獎名單</button><button onClick={resetProgress}>Reset</button></> : <><button className="primary" disabled={!canDraw} onClick={draw}>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "揭曉中" : drawBatchSize > 1 ? `抽出 ${Math.min(drawBatchSize, maxBatchSize || drawBatchSize)} 位` : "抽出下一位"}</button>{currentPrizePoolWarning && <button onClick={skipCurrentPrize}>跳過此獎項</button>}</>}</div></div></section>
+            <section className="panel prize-panel"><div className="prize-info"><p>目前獎項</p><h2>{currentPrize?.name ?? "尚未鎖定獎項"}</h2>{currentPrize?.drawHost && <div className="draw-host-chip" title="本獎項抽獎嘉賓"><span>抽獎人</span><b>{currentPrize.drawHost}</b></div>}{currentPrize ? <><div className="prize-stat-row"><span className="prize-stat"><small>金額</small><b>NT$ {currentPrize.amount.toLocaleString("zh-TW")}</b></span><span className="prize-stat"><small>已抽</small><b>{displayedDrawCount} / {currentPrize.quota}</b></span></div><div className="prize-rule-badges"><span className={`rule-badge ${currentPrize.poolMode === "allEligible" ? "rule-badge-all" : "rule-badge-remaining"}`} title={poolModeBadgeTitle(currentPrize.poolMode)}>{poolModeBadgeText(currentPrize.poolMode)}</span><span className={`rule-badge ${currentPrize.removeAfterWin ? "rule-badge-remove" : "rule-badge-keep"}`} title={removeAfterWinBadgeTitle(currentPrize.removeAfterWin)}>{removeAfterWinBadgeText(currentPrize.removeAfterWin)}</span></div></> : <div className="prize-empty">請先設定資料</div>}</div><div className="prize-actions no-print">{!canEdit && lotteryStatus !== "completed" && <label className="batch-control"><span>每次抽出幾位</span><input type="number" min={1} max={Math.max(1, maxBatchSize)} value={drawBatchSize} disabled={lotteryStatus !== "locked" || !canDraw} onChange={(event) => updateDrawBatchSize(event.target.value)} /><small>最多可抽 {maxBatchSize} 位</small></label>}{currentPrizePoolWarning && <div className="draw-warning">目前獎項沒有可抽人員，請調整獎項設定或跳過此獎項。</div>}<div className="buttons prize-action-buttons">{canEdit ? <button className="primary" onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === "completed" ? <><button className="primary" onClick={() => window.print()}>列印 A4 中獎名單</button><button onClick={resetProgress}>Reset</button></> : <><button className="primary" disabled={!canDraw} onClick={draw}>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "揭曉中" : drawBatchSize > 1 ? `抽出 ${Math.min(drawBatchSize, maxBatchSize || drawBatchSize)} 位` : "抽出下一位"}</button>{currentPrizePoolWarning && <button onClick={skipCurrentPrize}>跳過此獎項</button>}</>}{canRerollLatestBatch && <button type="button" className="reroll-button" onClick={rerollLatestBatch}>重抽本輪</button>}</div></div></section>
             <section className={`panel machine ${lotteryStatus === "drawing" ? "is-drawing" : ""}`}>
               <div className="slot-window" ref={slotWindowRef}>
                 <div className="slot-mask slot-mask-top" />
