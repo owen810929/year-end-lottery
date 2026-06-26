@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 type Participant = { id: string; department: string; name: string; eligible: boolean };
@@ -35,14 +35,29 @@ type LatestDrawBatch = {
   removeAfterWin: boolean;
 };
 
+type BonusPrizeInput = {
+  name: string;
+  amount: number;
+  quota: number;
+  drawHost: string;
+  note: string;
+};
+
 const STORAGE_KEY = 'company-year-end-party-2027';
-const APP_VERSION = '2026-06-26-xlsx-clear-data';
+const APP_VERSION = '2026-06-27-bonus-export';
 const DEFAULT_EVENT_TITLE = '公司尾牙抽獎系統';
 const OLD_DEFAULT_EVENT_TITLES = new Set(['2027 年公司尾牙抽獎系統', '2027 年公司尾牙抽獎', '2027 年台素股份有限公司尾牙抽獎']);
 const VISIBLE_ROWS = 3;
 const SPIN_DURATION_MS = 3200;
 const REVEAL_DURATION_MS = 3000;
 const LOTTERY_STATUSES: LotteryStatus[] = ['editing', 'ready', 'locked', 'drawing', 'revealing', 'completed'];
+const DEFAULT_BONUS_PRIZE_INPUT: BonusPrizeInput = {
+  name: '加碼獎',
+  amount: 0,
+  quota: 1,
+  drawHost: '',
+  note: '現場加碼',
+};
 const PARTICIPANT_TEMPLATE_ROWS = [
   ['部門', '姓名', 'ID', '是否參加抽獎'],
   ['生產部', '王小明', 'A001', '是'],
@@ -319,6 +334,14 @@ function removeAfterWinText(removeAfterWin: boolean) {
   return removeAfterWin ? '移出' : '可再中';
 }
 
+function poolModeExportText(mode?: PrizePoolMode) {
+  return mode === 'allEligible' ? '全部可抽人員' : '剩餘未中獎人';
+}
+
+function removeAfterWinExportText(removeAfterWin?: boolean) {
+  return removeAfterWin ? '移出後續抽獎池' : '仍可再中其他獎';
+}
+
 function poolModeBadgeText(mode: PrizePoolMode) {
   return mode === 'allEligible' ? '全部人員' : '剩餘人員';
 }
@@ -337,6 +360,17 @@ function removeAfterWinBadgeTitle(removeAfterWin: boolean) {
 
 function dateText(date = new Date()) {
   return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function formatDateTimeForExcel(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+}
+
+function formatDateForFileName(date = new Date()) {
+  return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}-${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 function downloadWorkbook(filename: string, sheetName: string, rows: string[][]) {
@@ -385,6 +419,8 @@ export default function App() {
   const [targetReelIndex, setTargetReelIndex] = useState(-1);
   const [reelPhase, setReelPhase] = useState<ReelPhase>('idle');
   const [spinRunId, setSpinRunId] = useState(0);
+  const [isBonusPrizeOpen, setIsBonusPrizeOpen] = useState(false);
+  const [bonusPrizeDraft, setBonusPrizeDraft] = useState<BonusPrizeInput>(DEFAULT_BONUS_PRIZE_INPUT);
   const drawTimer = useRef<number | null>(null);
   const revealTimer = useRef<number | null>(null);
   const slotWindowRef = useRef<HTMLDivElement | null>(null);
@@ -448,6 +484,12 @@ export default function App() {
     setReelPhase('idle');
   }
 
+  function moveToPrize(index: number) {
+    setCurrentPrizeIndex(index);
+    setCurrentDrawCountInPrize(0);
+    setDrawBatchSize(1);
+  }
+
   function touchEditing() {
     if (lotteryStatus === 'ready') setLotteryStatus('editing');
   }
@@ -504,8 +546,7 @@ export default function App() {
     setWinners([]);
     setLatestBatchWinners([]);
     setLatestDrawBatch(null);
-    setCurrentPrizeIndex(0);
-    setCurrentDrawCountInPrize(0);
+    moveToPrize(0);
     setRemainingParticipantIds(nextParticipants.map((person) => person.id));
     clearReelState();
     setLotteryStatus('locked');
@@ -525,8 +566,7 @@ export default function App() {
   function skipCurrentPrize() {
     if (lotteryStatus !== 'locked' || !currentPrize) return;
     const nextPrizeIndex = currentPrizeIndex + 1;
-    setCurrentPrizeIndex(nextPrizeIndex);
-    setCurrentDrawCountInPrize(0);
+    moveToPrize(nextPrizeIndex);
     setLatestBatchWinners([]);
     setLatestDrawBatch(null);
     clearReelState();
@@ -603,6 +643,7 @@ export default function App() {
       setRemainingParticipantIds(nextRemaining);
       setCurrentPrizeIndex(nextPrizeIndex);
       setCurrentDrawCountInPrize(moveNext ? 0 : nextCount);
+      if (moveNext) setDrawBatchSize(1);
       setLotteryStatus('revealing');
       setReelPhase('settled');
       drawTimer.current = null;
@@ -653,16 +694,20 @@ export default function App() {
     if (revealTimer.current) window.clearTimeout(revealTimer.current);
     drawTimer.current = null;
     revealTimer.current = null;
-    setLockedParticipants([]);
-    setLockedPrizes([]);
+
+    const hasLockedSnapshot = lockedParticipants.length > 0 && lockedPrizes.length > 0;
+    if (!hasLockedSnapshot) {
+      setLockedParticipants([]);
+      setLockedPrizes([]);
+    }
+
     setWinners([]);
     setLatestBatchWinners([]);
     setLatestDrawBatch(null);
-    setCurrentPrizeIndex(0);
-    setCurrentDrawCountInPrize(0);
-    setRemainingParticipantIds([]);
+    moveToPrize(0);
+    setRemainingParticipantIds(hasLockedSnapshot ? lockedParticipants.map((person) => person.id) : []);
     clearReelState();
-    setLotteryStatus(validate(participants, prizes).length ? 'editing' : 'ready');
+    setLotteryStatus(hasLockedSnapshot ? 'locked' : validate(participants, prizes).length ? 'editing' : 'ready');
   }
 
   function resetProgress() {
@@ -705,8 +750,111 @@ export default function App() {
     setPrizeDraft({ id: '', order: 1, name: '', amount: 0, quota: 1, note: '', poolMode: 'remaining', removeAfterWin: true, drawHost: '' });
     setPrizeEditingId(null);
     setPrizePaste('');
+    setBonusPrizeDraft(DEFAULT_BONUS_PRIZE_INPUT);
+    setIsBonusPrizeOpen(false);
     setActiveTab('lottery');
     clearReelState();
+  }
+
+  function createBonusPrize(input: BonusPrizeInput) {
+    if (lotteryStatus !== 'completed') return;
+
+    const eligibleLockedParticipants = lockedParticipants.filter((person) => person.eligible);
+    if (eligibleLockedParticipants.length === 0) {
+      window.alert('目前沒有可抽獎人員，無法新增加碼獎。');
+      return;
+    }
+
+    const quota = Math.max(1, Math.floor(Number(input.quota) || 1));
+    if (quota > eligibleLockedParticipants.length) {
+      window.alert(`加碼獎名額不可超過可抽獎人數 ${eligibleLockedParticipants.length} 位。`);
+      return;
+    }
+
+    const nextOrder = lockedPrizes.length > 0 ? Math.max(...lockedPrizes.map((prize) => prize.order)) + 1 : 1;
+    const bonusPrize = normalizePrize({
+      id: id('prize'),
+      order: nextOrder,
+      name: input.name.trim() || '加碼獎',
+      amount: Number(input.amount) || 0,
+      quota,
+      drawHost: input.drawHost.trim(),
+      note: input.note.trim() || '現場加碼',
+      poolMode: 'allEligible',
+      removeAfterWin: false,
+    });
+    const nextLockedPrizes = [...lockedPrizes, bonusPrize];
+
+    setLockedPrizes(nextLockedPrizes);
+    setPrizes((items) => sortPrizes([...items, bonusPrize]));
+    moveToPrize(nextLockedPrizes.length - 1);
+    setLatestBatchWinners([]);
+    setLatestDrawBatch(null);
+    clearReelState();
+    setLotteryStatus('locked');
+    setActiveTab('lottery');
+    setIsBonusPrizeOpen(false);
+    setBonusPrizeDraft(DEFAULT_BONUS_PRIZE_INPUT);
+  }
+
+  function submitBonusPrize(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    createBonusPrize(bonusPrizeDraft);
+  }
+
+  function openBonusPrizeModal() {
+    setBonusPrizeDraft(DEFAULT_BONUS_PRIZE_INPUT);
+    setIsBonusPrizeOpen(true);
+  }
+
+  function exportWinnersToExcel() {
+    if (winners.length === 0) {
+      window.alert('目前沒有中獎資料可匯出。');
+      return;
+    }
+
+    const prizeById = new Map<string, Prize>();
+    prizes.forEach((prize) => prizeById.set(prize.id, prize));
+    lockedPrizes.forEach((prize) => prizeById.set(prize.id, prize));
+
+    const rows = winners.map((winner, index) => {
+      const prize = prizeById.get(winner.prizeId);
+      const poolMode = winner.poolMode ?? prize?.poolMode;
+      const removeAfterWin = winner.removeAfterWin ?? prize?.removeAfterWin;
+      return {
+        順序: index + 1,
+        獎項順序: prize?.order ?? '',
+        獎項名稱: winner.prizeName || prize?.name || '',
+        金額: winner.amount ?? prize?.amount ?? 0,
+        抽獎人: winner.drawHost || prize?.drawHost || '',
+        部門: winner.department ?? '',
+        中獎人: winner.name ?? '',
+        ID: winner.participantId ?? '',
+        抽獎時間: formatDateTimeForExcel(winner.drawnAt),
+        抽獎池: poolModeExportText(poolMode),
+        中獎後資格: removeAfterWinExportText(removeAfterWin),
+        備註: prize?.note ?? '',
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet['!cols'] = [
+      { wch: 8 },
+      { wch: 10 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 22 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 20 },
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, '中獎名單');
+    XLSX.writeFile(workbook, `year-end-lottery-winners-${formatDateForFileName(new Date())}.xlsx`);
   }
 
   const winnerPanelTitle = lotteryStatus === 'drawing' ? '抽選中' : latestDisplayWinners.length > 1 ? `本輪抽出 ${latestDisplayWinners.length} 位` : lotteryStatus === 'revealing' ? '中獎人揭曉' : '等待抽獎';
@@ -720,7 +868,7 @@ export default function App() {
         <main>
           {activeTab === 'lottery' && <section className='lottery-layout'>
             <div className='panel title-panel no-print'><label><span>活動名稱</span><input disabled={!canEdit} value={eventTitle} onChange={(event) => { setEventTitle(event.target.value); touchEditing(); }} /></label><b className={`status status-${lotteryStatus}`}>{lotteryStatus}</b></div>
-            <section className='panel prize-panel'><div className='prize-info'><p>目前獎項</p><h2>{currentPrize?.name ?? '尚未鎖定獎項'}</h2>{currentPrize?.drawHost && <div className='draw-host-chip' title='本獎項抽獎嘉賓'><span>抽獎人</span><b>{currentPrize.drawHost}</b></div>}{currentPrize ? <><div className='prize-stat-row'><span className='prize-stat'><small>金額</small><b>NT$ {currentPrize.amount.toLocaleString('zh-TW')}</b></span><span className='prize-stat'><small>已抽</small><b>{displayedDrawCount} / {currentPrize.quota}</b></span></div><div className='prize-rule-badges'><span className={`rule-badge ${currentPrize.poolMode === 'allEligible' ? 'rule-badge-all' : 'rule-badge-remaining'}`} title={poolModeBadgeTitle(currentPrize.poolMode)}>{poolModeBadgeText(currentPrize.poolMode)}</span><span className={`rule-badge ${currentPrize.removeAfterWin ? 'rule-badge-remove' : 'rule-badge-keep'}`} title={removeAfterWinBadgeTitle(currentPrize.removeAfterWin)}>{removeAfterWinBadgeText(currentPrize.removeAfterWin)}</span></div></> : <div className='prize-empty'>請先設定資料</div>}</div><div className='prize-actions no-print'>{!canEdit && lotteryStatus !== 'completed' && <label className='batch-control'><span>每次抽出幾位</span><input type='number' min={1} max={Math.max(1, maxBatchSize)} value={drawBatchSize} disabled={lotteryStatus !== 'locked' || !canDraw} onChange={(event) => updateDrawBatchSize(event.target.value)} /><small>最多可抽 {maxBatchSize} 位</small></label>}{currentPrizePoolWarning && <div className='draw-warning'>目前獎項沒有可抽人員，請調整獎項設定或跳過此獎項。</div>}<div className='buttons prize-action-buttons'>{canEdit ? <button className='primary' onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === 'completed' ? <><button className='primary' onClick={() => window.print()}>列印 A4 中獎名單</button><button onClick={resetProgress}>Reset</button></> : <><button className='primary' disabled={!canDraw} onClick={draw}>{lotteryStatus === 'drawing' ? '抽選中' : lotteryStatus === 'revealing' ? '揭曉中' : drawBatchSize > 1 ? `抽出 ${Math.min(drawBatchSize, maxBatchSize || drawBatchSize)} 位` : '抽出下一位'}</button>{currentPrizePoolWarning && <button onClick={skipCurrentPrize}>跳過此獎項</button>}</>}{canRerollLatestBatch && <button type='button' className='reroll-button' onClick={rerollLatestBatch}>重抽本輪</button>}</div></div></section>
+            <section className='panel prize-panel'><div className='prize-info'><p>目前獎項</p><h2>{currentPrize?.name ?? '尚未鎖定獎項'}</h2>{currentPrize?.drawHost && <div className='draw-host-chip' title='本獎項抽獎嘉賓'><span>抽獎人</span><b>{currentPrize.drawHost}</b></div>}{currentPrize ? <><div className='prize-stat-row'><span className='prize-stat'><small>金額</small><b>NT$ {currentPrize.amount.toLocaleString('zh-TW')}</b></span><span className='prize-stat'><small>已抽</small><b>{displayedDrawCount} / {currentPrize.quota}</b></span></div><div className='prize-rule-badges'><span className={`rule-badge ${currentPrize.poolMode === 'allEligible' ? 'rule-badge-all' : 'rule-badge-remaining'}`} title={poolModeBadgeTitle(currentPrize.poolMode)}>{poolModeBadgeText(currentPrize.poolMode)}</span><span className={`rule-badge ${currentPrize.removeAfterWin ? 'rule-badge-remove' : 'rule-badge-keep'}`} title={removeAfterWinBadgeTitle(currentPrize.removeAfterWin)}>{removeAfterWinBadgeText(currentPrize.removeAfterWin)}</span></div></> : <div className='prize-empty'>請先設定資料</div>}</div><div className='prize-actions no-print'>{!canEdit && lotteryStatus !== 'completed' && <label className='batch-control'><span>每次抽出幾位</span><input type='number' min={1} max={Math.max(1, maxBatchSize)} value={drawBatchSize} disabled={lotteryStatus !== 'locked' || !canDraw} onChange={(event) => updateDrawBatchSize(event.target.value)} /><small>最多可抽 {maxBatchSize} 位</small></label>}{currentPrizePoolWarning && <div className='draw-warning'>目前獎項沒有可抽人員，請調整獎項設定或跳過此獎項。</div>}<div className='buttons prize-action-buttons'>{canEdit ? <button className='primary' onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === 'completed' ? <><button className='primary' onClick={() => window.print()}>列印 A4 中獎名單</button><button disabled={!winners.length} onClick={exportWinnersToExcel}>匯出 Excel 中獎名單</button><button onClick={openBonusPrizeModal}>加碼獎</button><button onClick={resetProgress}>Reset</button></> : <><button className='primary' disabled={!canDraw} onClick={draw}>{lotteryStatus === 'drawing' ? '抽選中' : lotteryStatus === 'revealing' ? '揭曉中' : drawBatchSize > 1 ? `抽出 ${Math.min(drawBatchSize, maxBatchSize || drawBatchSize)} 位` : '抽出下一位'}</button>{currentPrizePoolWarning && <button onClick={skipCurrentPrize}>跳過此獎項</button>}</>}{canRerollLatestBatch && <button type='button' className='reroll-button' onClick={rerollLatestBatch}>重抽本輪</button>}</div></div></section>
             <section className={`panel machine ${lotteryStatus === 'drawing' ? 'is-drawing' : ''}`}>
               <div className='slot-window' ref={slotWindowRef}>
                 <div className='slot-mask slot-mask-top' />
@@ -754,6 +902,7 @@ export default function App() {
           {activeTab === 'prizes' && <section className='settings-layout'><div className='panel form-panel' ref={prizeFormRef}><h2>獎項設定</h2>{!canEdit && <p className='alert'>抽獎資料已鎖定，完成後 Reset 才能修改。</p>}<div className='form-grid'><label><span>順序</span><input disabled={!canEdit} type='number' min={1} value={prizeDraft.order} onChange={(event) => setPrizeDraft({ ...prizeDraft, order: Number(event.target.value) })} /></label><label><span>獎項名稱</span><input disabled={!canEdit} value={prizeDraft.name} onChange={(event) => setPrizeDraft({ ...prizeDraft, name: event.target.value })} /></label><label><span>金額</span><input disabled={!canEdit} type='number' min={0} value={prizeDraft.amount} onChange={(event) => setPrizeDraft({ ...prizeDraft, amount: Number(event.target.value) })} /></label><label><span>名額</span><input disabled={!canEdit} type='number' min={1} value={prizeDraft.quota} onChange={(event) => setPrizeDraft({ ...prizeDraft, quota: Number(event.target.value) })} /></label><label><span>抽獎人</span><input disabled={!canEdit} value={prizeDraft.drawHost ?? ''} placeholder='例如：總經理、OOO 董事' onChange={(event) => setPrizeDraft({ ...prizeDraft, drawHost: event.target.value })} /></label><label><span>抽獎池</span><select disabled={!canEdit} value={prizeDraft.poolMode} onChange={(event) => { const nextPoolMode = event.target.value as PrizePoolMode; setPrizeDraft({ ...prizeDraft, poolMode: nextPoolMode, removeAfterWin: nextPoolMode === 'allEligible' ? false : prizeDraft.removeAfterWin }); }}><option value='remaining'>剩餘未中獎人</option><option value='allEligible'>全部可抽人員</option></select></label><label><span>中獎後資格</span><select disabled={!canEdit || prizeDraft.poolMode === 'allEligible'} value={prizeDraft.removeAfterWin ? 'remove' : 'keep'} onChange={(event) => setPrizeDraft({ ...prizeDraft, removeAfterWin: event.target.value === 'remove' })}>{prizeDraft.poolMode !== 'allEligible' && <option value='remove'>移出後續抽獎池</option>}<option value='keep'>仍可再中其他獎</option></select>{prizeDraft.poolMode === 'allEligible' && <small className='field-hint'>全部可抽人員的獎項不會影響後續抽獎資格。</small>}</label><label className='wide'><span>備註</span><input disabled={!canEdit} value={prizeDraft.note ?? ''} onChange={(event) => setPrizeDraft({ ...prizeDraft, note: event.target.value })} /></label></div><div className='buttons'><button disabled={!canEdit} onClick={savePrize}>{prizeEditingId !== null ? '儲存修改' : '新增獎項'}</button></div></div><div className='panel form-panel'><div className='import-panel-header'><div><h2>貼上匯入</h2><p>下載範例檔後，可用 Excel 編輯；完成後請複製獎項表格內容並貼到下方。</p></div><button type='button' onClick={downloadPrizeTemplate}>下載範例檔</button></div><textarea className='excel-paste-textarea' disabled={!canEdit} value={prizePaste} onChange={(event) => setPrizePaste(event.target.value)} placeholder={PRIZE_PASTE_PLACEHOLDER} /><div className='buttons'><button disabled={!canEdit || !prizePaste.trim()} onClick={() => { setPrizes([...prizes, ...parsePrizes(prizePaste)]); setPrizePaste(''); touchEditing(); }}>匯入貼上的資料</button><button disabled={!canEdit || !prizes.length} onClick={() => window.confirm('清空獎項？') && setPrizes([])}>清空獎項</button></div></div><PrizeTable prizes={sortedPrizes} canEdit={canEdit} onEdit={startEditPrize} onDelete={deletePrize} /></section>}
         </main>
       </div>
+      {isBonusPrizeOpen && <div className='bonus-modal-backdrop no-print'><section className='panel bonus-modal' role='dialog' aria-modal='true' aria-labelledby='bonus-prize-title'><header><h2 id='bonus-prize-title'>新增加碼獎</h2><p>加碼獎會追加在目前中獎名單之後，不會修改既有獎項與中獎結果。</p></header><form onSubmit={submitBonusPrize}><div className='form-grid'><label><span>獎項名稱</span><input value={bonusPrizeDraft.name} onChange={(event) => setBonusPrizeDraft({ ...bonusPrizeDraft, name: event.target.value })} /></label><label><span>金額</span><input type='number' min={0} value={bonusPrizeDraft.amount} onChange={(event) => setBonusPrizeDraft({ ...bonusPrizeDraft, amount: Number(event.target.value) })} /></label><label><span>名額</span><input type='number' min={1} max={Math.max(1, lockedParticipants.filter((person) => person.eligible).length)} value={bonusPrizeDraft.quota} onChange={(event) => setBonusPrizeDraft({ ...bonusPrizeDraft, quota: Number(event.target.value) })} /></label><label><span>抽獎人</span><input value={bonusPrizeDraft.drawHost} onChange={(event) => setBonusPrizeDraft({ ...bonusPrizeDraft, drawHost: event.target.value })} /></label><label className='wide'><span>備註</span><input value={bonusPrizeDraft.note} onChange={(event) => setBonusPrizeDraft({ ...bonusPrizeDraft, note: event.target.value })} /></label></div><div className='bonus-fixed-rules'><span>抽獎池：全部可抽人員</span><span>中獎後：仍可再中其他獎</span></div><div className='buttons'><button className='primary' type='submit'>新增並開始抽獎</button><button type='button' onClick={() => setIsBonusPrizeOpen(false)}>取消</button></div></form></section></div>}
       <footer className='danger-zone no-print'><div><p>危險操作</p><span>Reset 會保留人員與獎項；清除所有暫存資料會讓系統回到初始狀態。</span></div><div className='danger-actions'><button className='danger-reset-button' type='button' onClick={forceResetProgress}>立刻 Reset</button><button className='danger-clear-button' type='button' onClick={clearAllStoredData}>清除所有暫存資料</button></div></footer>
       <p className='app-version no-print'>Version: {APP_VERSION}</p>
       <section className='print-only print-sheet'><header><p>中獎名單</p><h1>{eventTitle}</h1><time>{dateText()}</time></header><WinnerTable winners={winners} print /></section>
