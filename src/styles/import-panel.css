@@ -28,6 +28,27 @@
   font-weight: 900;
 }
 
+.danger-actions {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.danger-clear-button {
+  min-height: 44px;
+  padding: .55rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(195, 59, 47, .7);
+  background: rgba(195, 59, 47, .1);
+  color: var(--red);
+  font-weight: 900;
+}
+
+.danger-clear-button:hover {
+  background: rgba(195, 59, 47, .18);
+}
+
 @media (max-width: 720px) {
   .import-panel-header {
     display: grid;
@@ -35,6 +56,16 @@
   }
 
   .import-panel-header button {
+    width: 100%;
+  }
+
+  .danger-actions {
+    display: grid;
+    width: 100%;
+  }
+
+  .danger-reset-button,
+  .danger-clear-button {
     width: 100%;
   }
 }
