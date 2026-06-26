@@ -4,16 +4,37 @@ import App from "./App";
 import "./styles/main.css";
 import "./styles/print.css";
 
+function unregisterLegacyServiceWorkers() {
+  if (!("serviceWorker" in navigator)) return;
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) => {
+        registrations.forEach((registration) => registration.unregister());
+      })
+      .catch(() => {});
+  });
+}
+
+function clearLegacyCaches() {
+  if (!("caches" in window)) return;
+
+  window.addEventListener("load", () => {
+    caches
+      .keys()
+      .then((keys) => {
+        keys.filter((key) => key.startsWith("year-end-party")).forEach((key) => caches.delete(key));
+      })
+      .catch(() => {});
+  });
+}
+
+unregisterLegacyServiceWorkers();
+clearLegacyCaches();
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
   </StrictMode>
 );
-
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
-      console.info("Service worker registration skipped.");
-    });
-  });
-}
