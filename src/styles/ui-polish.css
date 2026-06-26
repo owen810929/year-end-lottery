@@ -32,18 +32,63 @@
   word-break: keep-all;
 }
 
-.lottery-layout > .list-panel,
-.lottery-layout > .list-panel .table-wrap {
-  width: 100%;
-  max-width: 100%;
+@media screen {
+  .table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .table-wrap table,
+  .data-table,
+  .people-table,
+  .prize-table,
+  .winner-table {
+    width: 100%;
+    min-width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+
+  .table-wrap th,
+  .table-wrap td,
+  .data-table th,
+  .data-table td,
+  .people-table th,
+  .people-table td,
+  .prize-table th,
+  .prize-table td,
+  .winner-table th,
+  .winner-table td {
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .table-actions,
+  td .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+  }
+
+  .table-wrap td button {
+    margin: .15rem .2rem .15rem 0;
+    white-space: nowrap;
+  }
 }
 
-.lottery-layout > .list-panel .table-wrap {
-  overflow-x: auto;
-}
+@media screen and (min-width: 721px) {
+  .lottery-layout > .list-panel,
+  .settings-layout > .list-panel,
+  .lottery-layout > .list-panel .table-wrap,
+  .settings-layout > .list-panel .table-wrap {
+    width: 100%;
+    max-width: 100%;
+  }
 
-@media (min-width: 721px) {
-  .lottery-layout > .list-panel .table-wrap table {
+  .lottery-layout > .list-panel .table-wrap table,
+  .settings-layout > .list-panel .table-wrap table {
     width: 100%;
     min-width: 100%;
     table-layout: fixed;
@@ -74,9 +119,79 @@
   .lottery-layout > .list-panel td:nth-child(5) {
     width: 28%;
   }
+
+  .settings-layout > .list-panel table:has(th:nth-child(5):last-child) th:nth-child(1),
+  .settings-layout > .list-panel table:has(th:nth-child(5):last-child) td:nth-child(1) {
+    width: 14%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(5):last-child) th:nth-child(2),
+  .settings-layout > .list-panel table:has(th:nth-child(5):last-child) td:nth-child(2) {
+    width: 20%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(5):last-child) th:nth-child(3),
+  .settings-layout > .list-panel table:has(th:nth-child(5):last-child) td:nth-child(3) {
+    width: 24%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(5):last-child) th:nth-child(4),
+  .settings-layout > .list-panel table:has(th:nth-child(5):last-child) td:nth-child(4) {
+    width: 18%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(5):last-child) th:nth-child(5),
+  .settings-layout > .list-panel table:has(th:nth-child(5):last-child) td:nth-child(5) {
+    width: 24%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) th:nth-child(1),
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) td:nth-child(1) {
+    width: 6%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) th:nth-child(2),
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) td:nth-child(2) {
+    width: 14%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) th:nth-child(3),
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) td:nth-child(3) {
+    width: 10%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) th:nth-child(4),
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) td:nth-child(4) {
+    width: 8%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) th:nth-child(5),
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) td:nth-child(5) {
+    width: 14%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) th:nth-child(6),
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) td:nth-child(6) {
+    width: 16%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) th:nth-child(7),
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) td:nth-child(7) {
+    width: 10%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) th:nth-child(8),
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) td:nth-child(8) {
+    width: 10%;
+  }
+
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) th:nth-child(9),
+  .settings-layout > .list-panel table:has(th:nth-child(9):last-child) td:nth-child(9) {
+    width: 12%;
+  }
 }
 
-@media (max-width: 720px) {
+@media screen and (max-width: 720px) {
   .draw-host-chip {
     white-space: normal;
   }
@@ -86,16 +201,22 @@
     white-space: normal;
   }
 
-  .lottery-layout > .list-panel {
+  .list-panel {
     overflow: hidden;
   }
 
-  .lottery-layout > .list-panel .table-wrap {
+  .table-wrap {
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  .lottery-layout > .list-panel .table-wrap table {
+  .table-wrap table,
+  .data-table,
+  .people-table,
+  .prize-table,
+  .winner-table {
     width: 720px;
     min-width: 720px;
     table-layout: auto;
