@@ -232,6 +232,38 @@ label span {
   font-weight: 700;
 }
 
+.draw-host-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .4rem;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: .35rem .75rem;
+  border: 1px solid rgba(215, 167, 60, .42);
+  border-radius: 999px;
+  background: rgba(215, 167, 60, .16);
+  color: var(--green);
+  white-space: nowrap;
+}
+
+.draw-host-chip span {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.draw-host-chip b {
+  max-width: min(360px, 64vw);
+  overflow: hidden;
+  color: var(--green);
+  font-size: 1rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .prize-stat-row {
   display: flex;
   flex-wrap: wrap;
@@ -557,6 +589,15 @@ label span {
   font-size: .85rem;
 }
 
+.field-hint {
+  display: block;
+  margin-top: .35rem;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .alert {
   border: 1px solid rgba(195, 59, 47, .22);
   border-radius: 8px;
@@ -624,7 +665,7 @@ td button {
 
 table {
   width: 100%;
-  min-width: 820px;
+  min-width: 920px;
   border-collapse: collapse;
   background: #fffefa;
 }
