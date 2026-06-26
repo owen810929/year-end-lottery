@@ -30,7 +30,7 @@ test("基本匯入與連續抽獎流程穩定", async ({ page }, testInfo) => {
   await expect(page.locator(".status")).toHaveText("completed");
   await expectAppNotBlank(page);
   await expectPrintableWinnerDom(page);
-  await expect(getWinnerCount(page)).resolves.toBe(29);
+  expect(await getWinnerCount(page)).toBe(29);
   await assertNoDuplicateGeneralWinners(page);
 
   const storedState = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
