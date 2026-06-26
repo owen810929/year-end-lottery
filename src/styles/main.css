@@ -14,13 +14,22 @@
   --reel-visible-rows: 3;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 * {
   box-sizing: border-box;
+  min-width: 0;
 }
 
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: 0;
   min-height: 100vh;
   background: linear-gradient(180deg, rgba(22, 57, 47, .08), transparent 220px), #f5f1e8;
 }
@@ -89,6 +98,20 @@ label span {
   width: min(1180px, 100%);
   margin: 0 auto;
   padding: 1rem;
+}
+
+.app-shell,
+.lottery-layout,
+.settings-layout,
+.panel,
+.prize-panel,
+.machine,
+.winner,
+.action-panel,
+.list-panel,
+.table-wrap {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .app-header {
@@ -270,6 +293,7 @@ label span {
   flex-wrap: wrap;
   gap: .55rem;
   align-items: center;
+  max-width: 100%;
   margin-top: .25rem;
 }
 
@@ -277,6 +301,7 @@ label span {
   display: inline-flex;
   align-items: baseline;
   gap: .35rem;
+  max-width: 100%;
   min-height: 34px;
   padding: .35rem .7rem;
   border: 1px solid rgba(22, 57, 47, .16);
@@ -304,6 +329,7 @@ label span {
   display: flex;
   flex-wrap: wrap;
   gap: .45rem;
+  max-width: 100%;
   margin-top: .05rem;
 }
 
@@ -311,6 +337,7 @@ label span {
   display: inline-flex;
   align-items: center;
   width: fit-content;
+  max-width: 100%;
   min-height: 30px;
   padding: .25rem .65rem;
   border: 1px solid rgba(22, 57, 47, .18);
@@ -413,6 +440,7 @@ label span {
 .slot-window {
   position: relative;
   width: min(560px, 86%);
+  max-width: 100%;
   height: calc(var(--reel-item-height) * var(--reel-visible-rows));
   overflow: hidden;
   border: 4px solid rgba(248, 217, 121, .9);
@@ -514,7 +542,9 @@ label span {
   grid-column: 1 / -1;
   place-items: center;
   align-content: center;
+  max-width: 100%;
   min-height: 300px;
+  overflow: hidden;
   padding: 1.4rem;
   text-align: center;
 }
@@ -527,17 +557,21 @@ label span {
 }
 
 .winner strong {
+  display: block;
+  max-width: 100%;
   color: var(--red);
   font-size: clamp(4rem, 8vw, 7.2rem);
-  line-height: 1.02;
+  line-height: 1.05;
   overflow-wrap: anywhere;
 }
 
 .winner span {
+  max-width: 100%;
   margin-top: .35rem;
   color: var(--green);
   font-size: 1.1rem;
   font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .winner.is-revealing {
@@ -546,6 +580,7 @@ label span {
 
 .batch-winner-grid {
   width: 100%;
+  max-width: 100%;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
@@ -632,6 +667,7 @@ label span {
   display: flex;
   flex-wrap: wrap;
   gap: .65rem;
+  max-width: 100%;
   margin-top: 1rem;
 }
 
@@ -675,7 +711,9 @@ td button {
 
 .table-wrap {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -685,6 +723,11 @@ table {
   min-width: 920px;
   border-collapse: collapse;
   background: #fffefa;
+}
+
+.table-wrap table {
+  width: max-content;
+  min-width: 920px;
 }
 
 th,
@@ -779,8 +822,114 @@ tr:last-child td {
   }
 }
 
-@media (max-width: 719px) {
+@media (max-width: 720px) {
+  .app-shell {
+    width: 100%;
+    padding: .75rem;
+  }
+
+  .lottery-layout,
+  .settings-layout,
+  .prize-panel {
+    grid-template-columns: 1fr !important;
+  }
+
+  .title-panel,
+  .prize-panel,
+  .machine,
+  .winner,
+  .action-panel,
+  .list-panel {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .prize-panel {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .prize-info,
+  .prize-actions {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .draw-host-chip {
+    align-items: center;
+    white-space: normal;
+  }
+
+  .draw-host-chip b {
+    overflow: visible;
+    text-overflow: initial;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .prize-stat,
+  .rule-badge {
+    flex-wrap: wrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .prize-stat b {
+    overflow-wrap: anywhere;
+  }
+
+  .batch-control input,
+  .prize-action-buttons .primary {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .machine {
+    padding: .75rem;
+  }
+
+  .slot-window {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .reel-item {
+    font-size: clamp(1.45rem, 8vw, 2.4rem);
+  }
+
+  .winner {
+    min-height: 220px;
+    padding: 1rem;
+  }
+
+  .winner strong {
+    font-size: clamp(2.6rem, 12vw, 4.2rem);
+  }
+
+  .batch-winner-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .batch-winner-grid strong {
+    font-size: clamp(1.8rem, 8vw, 3rem);
+  }
+
+  .list-panel {
+    overflow: hidden;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .table-wrap table {
+    min-width: 640px;
+  }
+
   .danger-zone {
+    width: calc(100% - 1.5rem);
+    margin: 2rem auto 1rem;
     flex-direction: column;
     align-items: stretch;
   }
@@ -790,7 +939,7 @@ tr:last-child td {
   }
 }
 
-@media (min-width: 720px) {
+@media (min-width: 721px) {
   .app-shell {
     padding: 1.4rem;
   }
