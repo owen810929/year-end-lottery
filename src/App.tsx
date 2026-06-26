@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type Participant = { id: string; department: string; name: string; eligible: boolean };
 type PrizePoolMode = "remaining" | "allEligible";
-type Prize = { id: string; order: number; name: string; amount: number; quota: number; note?: string; poolMode: PrizePoolMode; removeAfterWin: boolean };
-type Winner = { id: string; prizeId: string; prizeName: string; amount: number; participantId: string; department: string; name: string; drawnAt: string; poolMode?: PrizePoolMode; removeAfterWin?: boolean };
+type Prize = { id: string; order: number; name: string; amount: number; quota: number; note?: string; poolMode: PrizePoolMode; removeAfterWin: boolean; drawHost?: string };
+type Winner = { id: string; prizeId: string; prizeName: string; amount: number; participantId: string; department: string; name: string; drawnAt: string; poolMode?: PrizePoolMode; removeAfterWin?: boolean; drawHost?: string };
 type LotteryStatus = "editing" | "ready" | "locked" | "drawing" | "revealing" | "completed";
 type ReelPhase = "idle" | "resetting" | "spinning" | "settled";
 type TabId = "lottery" | "participants" | "prizes";
@@ -79,6 +79,8 @@ function parseRemoveAfterWin(value?: string) {
 }
 
 function normalizePrize(prize: Partial<Prize>, fallbackIndex = 0): Prize {
+  const poolMode: PrizePoolMode = prize.poolMode === "allEligible" ? "allEligible" : "remaining";
+  const removeAfterWin = poolMode === "allEligible" ? false : typeof prize.removeAfterWin === "boolean" ? prize.removeAfterWin : true;
   return {
     id: prize.id ?? id("prize"),
     order: Number(prize.order) || fallbackIndex + 1,
@@ -86,8 +88,9 @@ function normalizePrize(prize: Partial<Prize>, fallbackIndex = 0): Prize {
     amount: Number(prize.amount) || 0,
     quota: Number(prize.quota) || 1,
     note: prize.note ?? "",
-    poolMode: prize.poolMode === "allEligible" ? "allEligible" : "remaining",
-    removeAfterWin: typeof prize.removeAfterWin === "boolean" ? prize.removeAfterWin : true,
+    poolMode,
+    removeAfterWin,
+    drawHost: prize.drawHost ?? "",
   };
 }
 
@@ -145,7 +148,10 @@ function parseParticipants(text: string): Participant[] {
 
 function parsePrizes(text: string): Prize[] {
   const rows = splitRows(text);
-  const body = rows[0]?.join("|").match(/順序|獎項|金額|名額|quota/i) ? rows.slice(1) : rows;
+  const headerText = rows[0]?.join("|") ?? "";
+  const hasHeader = /順序|獎項|金額|名額|quota/i.test(headerText);
+  const hasDrawHostColumn = /抽獎人|抽獎嘉賓|drawHost|host/i.test(headerText);
+  const body = hasHeader ? rows.slice(1) : rows;
   return body
     .map((row, index) => ({
       id: id("prize"),
@@ -153,9 +159,10 @@ function parsePrizes(text: string): Prize[] {
       name: row[1] ?? "",
       amount: toNumber(row[2]),
       quota: toNumber(row[3]),
-      note: row[4] ?? "",
-      poolMode: parsePoolMode(row[5]),
-      removeAfterWin: parseRemoveAfterWin(row[6]),
+      drawHost: hasDrawHostColumn ? row[4] ?? "" : "",
+      note: hasDrawHostColumn ? row[5] ?? "" : row[4] ?? "",
+      poolMode: parsePoolMode(hasDrawHostColumn ? row[6] : row[5]),
+      removeAfterWin: parseRemoveAfterWin(hasDrawHostColumn ? row[7] : row[6]),
     }))
     .filter((prize) => prize.name || prize.amount || prize.quota)
     .map((prize, index) => normalizePrize(prize, index));
@@ -184,6 +191,11 @@ function validate(participants: Participant[], prizes: Prize[]) {
     if (!person.name.trim()) errors.push(`第 ${index + 1} 位人員缺少姓名。`);
   });
   duplicates(participants.map((person) => person.id)).forEach((value) => errors.push(`人員 ID「${value}」重複。`));
+  prizes.forEach((prize, index) => {
+    if (prize.poolMode === "allEligible" && prize.removeAfterWin) {
+      errors.push(`「${prize.name || `第 ${index + 1} 個獎項`}」不可設定為「全部可抽人員 + 移出後續抽獎池」。請改為「仍可再中其他獎」。`);
+    }
+  });
   normalizedPrizes.forEach((prize, index) => {
     if (!Number.isInteger(prize.order) || prize.order <= 0) errors.push(`第 ${index + 1} 個獎項的順序必須是正整數。`);
     if (!prize.name.trim()) errors.push(`第 ${index + 1} 個獎項缺少名稱。`);
@@ -317,7 +329,7 @@ export default function App() {
   const [participantDraft, setParticipantDraft] = useState<Participant>({ id: "", department: "", name: "", eligible: true });
   const [participantEditingId, setParticipantEditingId] = useState<string | null>(null);
   const [participantPaste, setParticipantPaste] = useState("");
-  const [prizeDraft, setPrizeDraft] = useState<Prize>({ id: "", order: 1, name: "", amount: 0, quota: 1, note: "", poolMode: "remaining", removeAfterWin: true });
+  const [prizeDraft, setPrizeDraft] = useState<Prize>({ id: "", order: 1, name: "", amount: 0, quota: 1, note: "", poolMode: "remaining", removeAfterWin: true, drawHost: "" });
   const [prizeEditingId, setPrizeEditingId] = useState<string | null>(null);
   const [prizePaste, setPrizePaste] = useState("");
   const [pendingWinners, setPendingWinners] = useState<Participant[]>([]);
@@ -398,10 +410,10 @@ export default function App() {
   }
 
   function savePrize() {
-    const prize = normalizePrize({ ...prizeDraft, id: prizeEditingId ?? prizeDraft.id ?? id("prize"), order: Number(prizeDraft.order), amount: Number(prizeDraft.amount), quota: Number(prizeDraft.quota), name: prizeDraft.name.trim(), note: prizeDraft.note?.trim() }, prizes.length);
+    const prize = normalizePrize({ ...prizeDraft, id: prizeEditingId ?? prizeDraft.id ?? id("prize"), order: Number(prizeDraft.order), amount: Number(prizeDraft.amount), quota: Number(prizeDraft.quota), name: prizeDraft.name.trim(), drawHost: prizeDraft.drawHost?.trim() ?? "", note: prizeDraft.note?.trim() }, prizes.length);
     if (!prize.name && prize.amount === 0 && prize.quota === 0) return;
     setPrizes(prizeEditingId ? prizes.map((item) => (item.id === prizeEditingId ? prize : item)) : [...prizes, prize]);
-    setPrizeDraft({ id: "", order: prizes.length + 2, name: "", amount: 0, quota: 1, note: "", poolMode: "remaining", removeAfterWin: true });
+    setPrizeDraft({ id: "", order: prizes.length + 2, name: "", amount: 0, quota: 1, note: "", poolMode: "remaining", removeAfterWin: true, drawHost: "" });
     setPrizeEditingId(null);
     touchEditing();
   }
@@ -491,6 +503,7 @@ export default function App() {
         drawnAt: now,
         poolMode: currentPrize.poolMode,
         removeAfterWin: currentPrize.removeAfterWin,
+        drawHost: currentPrize.drawHost ?? "",
       }));
       const selectedIds = new Set(selectedPeople.map((person) => person.id));
       const nextRemaining = currentPrize.removeAfterWin ? remainingParticipantIds.filter((personId) => !selectedIds.has(personId)) : remainingParticipantIds;
@@ -554,7 +567,7 @@ export default function App() {
         <main>
           {activeTab === "lottery" && <section className="lottery-layout">
             <div className="panel title-panel no-print"><label><span>活動名稱</span><input disabled={!canEdit} value={eventTitle} onChange={(event) => { setEventTitle(event.target.value); touchEditing(); }} /></label><b className={`status status-${lotteryStatus}`}>{lotteryStatus}</b></div>
-            <section className="panel prize-panel"><div className="prize-info"><p>目前獎項</p><h2>{currentPrize?.name ?? "尚未鎖定獎項"}</h2>{currentPrize ? <><div className="prize-stat-row"><span className="prize-stat"><small>金額</small><b>NT$ {currentPrize.amount.toLocaleString("zh-TW")}</b></span><span className="prize-stat"><small>已抽</small><b>{displayedDrawCount} / {currentPrize.quota}</b></span></div><div className="prize-rule-badges"><span className={`rule-badge ${currentPrize.poolMode === "allEligible" ? "rule-badge-all" : "rule-badge-remaining"}`} title={poolModeBadgeTitle(currentPrize.poolMode)}>{poolModeBadgeText(currentPrize.poolMode)}</span><span className={`rule-badge ${currentPrize.removeAfterWin ? "rule-badge-remove" : "rule-badge-keep"}`} title={removeAfterWinBadgeTitle(currentPrize.removeAfterWin)}>{removeAfterWinBadgeText(currentPrize.removeAfterWin)}</span></div></> : <div className="prize-empty">請先設定資料</div>}</div><div className="prize-actions no-print">{!canEdit && lotteryStatus !== "completed" && <label className="batch-control"><span>每次抽出幾位</span><input type="number" min={1} max={Math.max(1, maxBatchSize)} value={drawBatchSize} disabled={lotteryStatus !== "locked" || !canDraw} onChange={(event) => updateDrawBatchSize(event.target.value)} /><small>最多可抽 {maxBatchSize} 位</small></label>}{currentPrizePoolWarning && <div className="draw-warning">目前獎項沒有可抽人員，請調整獎項設定或跳過此獎項。</div>}<div className="buttons prize-action-buttons">{canEdit ? <button className="primary" onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === "completed" ? <><button className="primary" onClick={() => window.print()}>列印 A4 中獎名單</button><button onClick={resetProgress}>Reset</button></> : <><button className="primary" disabled={!canDraw} onClick={draw}>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "揭曉中" : drawBatchSize > 1 ? `抽出 ${Math.min(drawBatchSize, maxBatchSize || drawBatchSize)} 位` : "抽出下一位"}</button>{currentPrizePoolWarning && <button onClick={skipCurrentPrize}>跳過此獎項</button>}</>}</div></div></section>
+            <section className="panel prize-panel"><div className="prize-info"><p>目前獎項</p><h2>{currentPrize?.name ?? "尚未鎖定獎項"}</h2>{currentPrize?.drawHost && <div className="draw-host-chip" title="本獎項抽獎嘉賓"><span>抽獎人</span><b>{currentPrize.drawHost}</b></div>}{currentPrize ? <><div className="prize-stat-row"><span className="prize-stat"><small>金額</small><b>NT$ {currentPrize.amount.toLocaleString("zh-TW")}</b></span><span className="prize-stat"><small>已抽</small><b>{displayedDrawCount} / {currentPrize.quota}</b></span></div><div className="prize-rule-badges"><span className={`rule-badge ${currentPrize.poolMode === "allEligible" ? "rule-badge-all" : "rule-badge-remaining"}`} title={poolModeBadgeTitle(currentPrize.poolMode)}>{poolModeBadgeText(currentPrize.poolMode)}</span><span className={`rule-badge ${currentPrize.removeAfterWin ? "rule-badge-remove" : "rule-badge-keep"}`} title={removeAfterWinBadgeTitle(currentPrize.removeAfterWin)}>{removeAfterWinBadgeText(currentPrize.removeAfterWin)}</span></div></> : <div className="prize-empty">請先設定資料</div>}</div><div className="prize-actions no-print">{!canEdit && lotteryStatus !== "completed" && <label className="batch-control"><span>每次抽出幾位</span><input type="number" min={1} max={Math.max(1, maxBatchSize)} value={drawBatchSize} disabled={lotteryStatus !== "locked" || !canDraw} onChange={(event) => updateDrawBatchSize(event.target.value)} /><small>最多可抽 {maxBatchSize} 位</small></label>}{currentPrizePoolWarning && <div className="draw-warning">目前獎項沒有可抽人員，請調整獎項設定或跳過此獎項。</div>}<div className="buttons prize-action-buttons">{canEdit ? <button className="primary" onClick={prepareLottery}>檢查並鎖定資料</button> : lotteryStatus === "completed" ? <><button className="primary" onClick={() => window.print()}>列印 A4 中獎名單</button><button onClick={resetProgress}>Reset</button></> : <><button className="primary" disabled={!canDraw} onClick={draw}>{lotteryStatus === "drawing" ? "抽選中" : lotteryStatus === "revealing" ? "揭曉中" : drawBatchSize > 1 ? `抽出 ${Math.min(drawBatchSize, maxBatchSize || drawBatchSize)} 位` : "抽出下一位"}</button>{currentPrizePoolWarning && <button onClick={skipCurrentPrize}>跳過此獎項</button>}</>}</div></div></section>
             <section className={`panel machine ${lotteryStatus === "drawing" ? "is-drawing" : ""}`}>
               <div className="slot-window" ref={slotWindowRef}>
                 <div className="slot-mask slot-mask-top" />
@@ -585,7 +598,7 @@ export default function App() {
             <WinnerTable winners={winners} />
           </section>}
           {activeTab === "participants" && <section className="settings-layout"><div className="panel form-panel"><h2>人員設定</h2>{!canEdit && <p className="alert">抽獎資料已鎖定，完成後 Reset 才能修改。</p>}<div className="form-grid"><label><span>部門</span><input disabled={!canEdit} value={participantDraft.department} onChange={(event) => setParticipantDraft({ ...participantDraft, department: event.target.value })} /></label><label><span>姓名</span><input disabled={!canEdit} value={participantDraft.name} onChange={(event) => setParticipantDraft({ ...participantDraft, name: event.target.value })} /></label><label><span>ID</span><input disabled={!canEdit || Boolean(participantEditingId)} value={participantDraft.id} onChange={(event) => setParticipantDraft({ ...participantDraft, id: event.target.value })} /></label><label className="check"><input disabled={!canEdit} type="checkbox" checked={participantDraft.eligible} onChange={(event) => setParticipantDraft({ ...participantDraft, eligible: event.target.checked })} />可參加抽獎</label></div><div className="buttons"><button disabled={!canEdit} onClick={saveParticipant}>{participantEditingId ? "儲存修改" : "新增人員"}</button></div></div><div className="panel form-panel"><h2>Excel 匯入</h2><textarea disabled={!canEdit} value={participantPaste} onChange={(event) => setParticipantPaste(event.target.value)} placeholder={"部門\t姓名\tID\n生產部\t王小明\tA001"} /><div className="buttons"><button disabled={!canEdit || !participantPaste.trim()} onClick={() => { setParticipants([...participants, ...parseParticipants(participantPaste)]); setParticipantPaste(""); touchEditing(); }}>匯入貼上內容</button><button disabled={!canEdit || !participants.length} onClick={() => window.confirm("清空人員？") && setParticipants([])}>清空人員</button></div></div><PeopleTable participants={participants} canEdit={canEdit} onEdit={(person) => { setParticipantDraft(person); setParticipantEditingId(person.id); }} onDelete={(personId) => setParticipants(participants.filter((person) => person.id !== personId))} /></section>}
-          {activeTab === "prizes" && <section className="settings-layout"><div className="panel form-panel"><h2>獎項設定</h2>{!canEdit && <p className="alert">抽獎資料已鎖定，完成後 Reset 才能修改。</p>}<div className="form-grid"><label><span>順序</span><input disabled={!canEdit} type="number" min={1} value={prizeDraft.order} onChange={(event) => setPrizeDraft({ ...prizeDraft, order: Number(event.target.value) })} /></label><label><span>獎項名稱</span><input disabled={!canEdit} value={prizeDraft.name} onChange={(event) => setPrizeDraft({ ...prizeDraft, name: event.target.value })} /></label><label><span>金額</span><input disabled={!canEdit} type="number" min={0} value={prizeDraft.amount} onChange={(event) => setPrizeDraft({ ...prizeDraft, amount: Number(event.target.value) })} /></label><label><span>名額</span><input disabled={!canEdit} type="number" min={1} value={prizeDraft.quota} onChange={(event) => setPrizeDraft({ ...prizeDraft, quota: Number(event.target.value) })} /></label><label><span>抽獎池</span><select disabled={!canEdit} value={prizeDraft.poolMode} onChange={(event) => setPrizeDraft({ ...prizeDraft, poolMode: event.target.value as PrizePoolMode })}><option value="remaining">剩餘未中獎人</option><option value="allEligible">全部可抽人員</option></select></label><label><span>中獎後資格</span><select disabled={!canEdit} value={prizeDraft.removeAfterWin ? "remove" : "keep"} onChange={(event) => setPrizeDraft({ ...prizeDraft, removeAfterWin: event.target.value === "remove" })}><option value="remove">移出後續抽獎池</option><option value="keep">仍可再中其他獎</option></select></label><label className="wide"><span>備註</span><input disabled={!canEdit} value={prizeDraft.note ?? ""} onChange={(event) => setPrizeDraft({ ...prizeDraft, note: event.target.value })} /></label></div><div className="buttons"><button disabled={!canEdit} onClick={savePrize}>{prizeEditingId ? "儲存修改" : "新增獎項"}</button></div></div><div className="panel form-panel"><h2>Excel 匯入</h2><textarea disabled={!canEdit} value={prizePaste} onChange={(event) => setPrizePaste(event.target.value)} placeholder={"順序\t獎項名稱\t金額\t名額\t備註\t抽獎池\t中獎後\n1\t六獎\t1000\t20\t現金\t剩餘未中獎人\t移出後續抽獎池\n2\t特別獎\t3000\t5\t加碼獎\t全部可抽人員\t仍可再中其他獎"} /><div className="buttons"><button disabled={!canEdit || !prizePaste.trim()} onClick={() => { setPrizes([...prizes, ...parsePrizes(prizePaste)]); setPrizePaste(""); touchEditing(); }}>匯入貼上內容</button><button disabled={!canEdit || !prizes.length} onClick={() => window.confirm("清空獎項？") && setPrizes([])}>清空獎項</button></div></div><PrizeTable prizes={sortedPrizes} canEdit={canEdit} onEdit={(prize) => { setPrizeDraft(normalizePrize(prize)); setPrizeEditingId(prize.id); }} onDelete={(prizeId) => setPrizes(prizes.filter((prize) => prize.id !== prizeId))} /></section>}
+          {activeTab === "prizes" && <section className="settings-layout"><div className="panel form-panel"><h2>獎項設定</h2>{!canEdit && <p className="alert">抽獎資料已鎖定，完成後 Reset 才能修改。</p>}<div className="form-grid"><label><span>順序</span><input disabled={!canEdit} type="number" min={1} value={prizeDraft.order} onChange={(event) => setPrizeDraft({ ...prizeDraft, order: Number(event.target.value) })} /></label><label><span>獎項名稱</span><input disabled={!canEdit} value={prizeDraft.name} onChange={(event) => setPrizeDraft({ ...prizeDraft, name: event.target.value })} /></label><label><span>金額</span><input disabled={!canEdit} type="number" min={0} value={prizeDraft.amount} onChange={(event) => setPrizeDraft({ ...prizeDraft, amount: Number(event.target.value) })} /></label><label><span>名額</span><input disabled={!canEdit} type="number" min={1} value={prizeDraft.quota} onChange={(event) => setPrizeDraft({ ...prizeDraft, quota: Number(event.target.value) })} /></label><label><span>抽獎人</span><input disabled={!canEdit} value={prizeDraft.drawHost ?? ""} placeholder="例如：總經理、OOO 董事" onChange={(event) => setPrizeDraft({ ...prizeDraft, drawHost: event.target.value })} /></label><label><span>抽獎池</span><select disabled={!canEdit} value={prizeDraft.poolMode} onChange={(event) => { const nextPoolMode = event.target.value as PrizePoolMode; setPrizeDraft({ ...prizeDraft, poolMode: nextPoolMode, removeAfterWin: nextPoolMode === "allEligible" ? false : prizeDraft.removeAfterWin }); }}><option value="remaining">剩餘未中獎人</option><option value="allEligible">全部可抽人員</option></select></label><label><span>中獎後資格</span><select disabled={!canEdit || prizeDraft.poolMode === "allEligible"} value={prizeDraft.removeAfterWin ? "remove" : "keep"} onChange={(event) => setPrizeDraft({ ...prizeDraft, removeAfterWin: event.target.value === "remove" })}>{prizeDraft.poolMode !== "allEligible" && <option value="remove">移出後續抽獎池</option>}<option value="keep">仍可再中其他獎</option></select>{prizeDraft.poolMode === "allEligible" && <small className="field-hint">全部可抽人員的獎項不會影響後續抽獎資格。</small>}</label><label className="wide"><span>備註</span><input disabled={!canEdit} value={prizeDraft.note ?? ""} onChange={(event) => setPrizeDraft({ ...prizeDraft, note: event.target.value })} /></label></div><div className="buttons"><button disabled={!canEdit} onClick={savePrize}>{prizeEditingId ? "儲存修改" : "新增獎項"}</button></div></div><div className="panel form-panel"><h2>Excel 匯入</h2><textarea disabled={!canEdit} value={prizePaste} onChange={(event) => setPrizePaste(event.target.value)} placeholder={"順序\t獎項名稱\t金額\t名額\t抽獎人\t備註\t抽獎池\t中獎後\n1\t六獎\t1000\t20\t總經理\t現金\t剩餘未中獎人\t移出後續抽獎池\n2\t特別獎\t3000\t5\t董事長\t加碼獎\t全部可抽人員\t仍可再中其他獎"} /><div className="buttons"><button disabled={!canEdit || !prizePaste.trim()} onClick={() => { setPrizes([...prizes, ...parsePrizes(prizePaste)]); setPrizePaste(""); touchEditing(); }}>匯入貼上內容</button><button disabled={!canEdit || !prizes.length} onClick={() => window.confirm("清空獎項？") && setPrizes([])}>清空獎項</button></div></div><PrizeTable prizes={sortedPrizes} canEdit={canEdit} onEdit={(prize) => { setPrizeDraft(normalizePrize(prize)); setPrizeEditingId(prize.id); }} onDelete={(prizeId) => setPrizes(prizes.filter((prize) => prize.id !== prizeId))} /></section>}
         </main>
       </div>
       <footer className="danger-zone no-print"><div><p>危險操作</p><span>立刻清除目前中獎結果與抽獎進度。人員與獎項設定會保留。</span></div><button className="danger-reset-button" type="button" onClick={forceResetProgress}>立刻 Reset</button></footer>
@@ -595,7 +608,7 @@ export default function App() {
 }
 
 function WinnerTable({ winners, print = false }: { winners: Winner[]; print?: boolean }) {
-  return <section className={print ? "" : "panel list-panel"}><h2>{print ? "" : `已抽出 ${winners.length} 位`}</h2>{winners.length === 0 ? <p>尚無中獎紀錄。</p> : <div className="table-wrap"><table><thead><tr><th>順序</th><th>獎項</th><th>金額</th><th>部門</th><th>中獎人</th>{print && <th>簽收欄</th>}</tr></thead><tbody>{winners.map((winner, index) => <tr key={winner.id}><td>{index + 1}</td><td>{winner.prizeName}</td><td>{winner.amount.toLocaleString("zh-TW")}</td><td>{winner.department}</td><td>{winner.name}</td>{print && <td />}</tr>)}</tbody></table></div>}</section>;
+  return <section className={print ? "" : "panel list-panel"}><h2>{print ? "" : `已抽出 ${winners.length} 位`}</h2>{winners.length === 0 ? <p>尚無中獎紀錄。</p> : <div className="table-wrap"><table><thead><tr><th>順序</th><th>獎項</th><th>金額</th>{print && <th>抽獎人</th>}<th>部門</th><th>中獎人</th>{print && <th>簽收欄</th>}</tr></thead><tbody>{winners.map((winner, index) => <tr key={winner.id}><td>{index + 1}</td><td>{winner.prizeName}</td><td>{winner.amount.toLocaleString("zh-TW")}</td>{print && <td>{winner.drawHost || "-"}</td>}<td>{winner.department}</td><td>{winner.name}</td>{print && <td />}</tr>)}</tbody></table></div>}</section>;
 }
 
 function PeopleTable({ participants, canEdit, onEdit, onDelete }: { participants: Participant[]; canEdit: boolean; onEdit: (person: Participant) => void; onDelete: (id: string) => void }) {
@@ -603,5 +616,5 @@ function PeopleTable({ participants, canEdit, onEdit, onDelete }: { participants
 }
 
 function PrizeTable({ prizes, canEdit, onEdit, onDelete }: { prizes: Prize[]; canEdit: boolean; onEdit: (prize: Prize) => void; onDelete: (id: string) => void }) {
-  return <section className="panel list-panel"><h2>{prizes.length} 個獎項</h2>{prizes.length === 0 ? <p>尚未新增獎項。</p> : <div className="table-wrap"><table><thead><tr><th>順序</th><th>獎項</th><th>金額</th><th>名額</th><th>抽獎池</th><th>中獎後</th><th>備註</th><th>操作</th></tr></thead><tbody>{prizes.map((prize) => <tr key={prize.id}><td>{prize.order}</td><td>{prize.name}</td><td>{prize.amount.toLocaleString("zh-TW")}</td><td>{prize.quota}</td><td>{poolModeText(prize.poolMode)}</td><td>{removeAfterWinText(prize.removeAfterWin)}</td><td>{prize.note || "-"}</td><td><button disabled={!canEdit} onClick={() => onEdit(prize)}>修改</button><button disabled={!canEdit} onClick={() => window.confirm("刪除這個獎項？") && onDelete(prize.id)}>刪除</button></td></tr>)}</tbody></table></div>}</section>;
+  return <section className="panel list-panel"><h2>{prizes.length} 個獎項</h2>{prizes.length === 0 ? <p>尚未新增獎項。</p> : <div className="table-wrap"><table><thead><tr><th>順序</th><th>獎項</th><th>金額</th><th>名額</th><th>抽獎人</th><th>抽獎池</th><th>中獎後</th><th>備註</th><th>操作</th></tr></thead><tbody>{prizes.map((prize) => <tr key={prize.id}><td>{prize.order}</td><td>{prize.name}</td><td>{prize.amount.toLocaleString("zh-TW")}</td><td>{prize.quota}</td><td>{prize.drawHost || "-"}</td><td>{poolModeText(prize.poolMode)}</td><td>{removeAfterWinText(prize.removeAfterWin)}</td><td>{prize.note || "-"}</td><td><button disabled={!canEdit} onClick={() => onEdit(prize)}>修改</button><button disabled={!canEdit} onClick={() => window.confirm("刪除這個獎項？") && onDelete(prize.id)}>刪除</button></td></tr>)}</tbody></table></div>}</section>;
 }
