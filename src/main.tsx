@@ -4,6 +4,7 @@ import App from "./App";
 import "./styles/main.css";
 import "./styles/import-panel.css";
 import "./styles/print.css";
+import "./styles/ui-polish.css";
 
 function unregisterLegacyServiceWorkers() {
   if (!("serviceWorker" in navigator)) return;
