@@ -1,0 +1,68 @@
+@media screen {
+  .bonus-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(12, 25, 21, .48);
+  }
+
+  .bonus-modal {
+    width: min(620px, 100%);
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
+  }
+
+  .bonus-modal header {
+    margin-bottom: 1rem;
+  }
+
+  .bonus-modal h2 {
+    margin: 0 0 .35rem;
+    color: var(--green);
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+
+  .bonus-modal p {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .bonus-fixed-rules {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: 1rem 0;
+  }
+
+  .bonus-fixed-rules span {
+    border: 1px solid rgba(22, 57, 47, .18);
+    border-radius: 999px;
+    background: rgba(47, 102, 89, .08);
+    color: var(--green);
+    font-size: .9rem;
+    font-weight: 800;
+    padding: .42rem .68rem;
+  }
+}
+
+@media screen and (max-width: 720px) {
+  .bonus-modal-backdrop {
+    align-items: end;
+    padding: .75rem;
+  }
+
+  .bonus-modal {
+    width: 100%;
+    max-height: calc(100vh - 1.5rem);
+  }
+}
+
+@media print {
+  .bonus-modal-backdrop {
+    display: none !important;
+  }
+}
