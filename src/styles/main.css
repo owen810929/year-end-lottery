@@ -80,6 +80,20 @@ textarea {
   min-height: 148px;
 }
 
+.excel-paste-textarea {
+  min-height: 180px;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", monospace;
+  font-size: .88rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+
+.excel-paste-textarea::placeholder {
+  color: rgba(103, 114, 109, .78);
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -849,6 +863,11 @@ tr:last-child td {
   .app-shell {
     width: 100%;
     padding: .75rem;
+  }
+
+  .excel-paste-textarea {
+    font-size: .78rem;
+    line-height: 1.5;
   }
 
   .lottery-layout,
