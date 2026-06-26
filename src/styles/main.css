@@ -10,6 +10,8 @@
   --line: #d9d0bd;
   --muted: #67726d;
   --shadow: 0 18px 42px rgba(31, 42, 35, .14);
+  --reel-item-height: 86px;
+  --reel-visible-rows: 3;
 }
 
 * {
@@ -234,13 +236,13 @@ label span {
 
 .draw-host-chip {
   display: inline-flex;
-  align-items: baseline;
-  gap: .4rem;
+  align-items: center;
+  gap: .55rem;
   width: fit-content;
   max-width: 100%;
   min-width: 0;
-  min-height: 34px;
-  padding: .35rem .75rem;
+  min-height: 42px;
+  padding: .45rem .95rem;
   border: 1px solid rgba(215, 167, 60, .42);
   border-radius: 999px;
   background: rgba(215, 167, 60, .16);
@@ -250,17 +252,16 @@ label span {
 
 .draw-host-chip span {
   color: var(--muted);
-  font-size: .78rem;
-  font-weight: 800;
+  font-size: .9rem;
+  font-weight: 900;
 }
 
 .draw-host-chip b {
-  max-width: min(360px, 64vw);
-  overflow: hidden;
+  overflow: visible;
   color: var(--green);
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: 900;
-  text-overflow: ellipsis;
+  text-overflow: initial;
   white-space: nowrap;
 }
 
@@ -346,6 +347,8 @@ label span {
 
 .prize-actions .batch-control input {
   max-width: none;
+  min-height: 52px;
+  font-size: 1.25rem;
 }
 
 .prize-action-buttons {
@@ -354,7 +357,7 @@ label span {
 
 .prize-actions .primary {
   width: 100%;
-  min-height: 72px;
+  min-height: 64px;
   border-radius: 14px;
   font-size: 1.35rem;
 }
@@ -410,7 +413,7 @@ label span {
 .slot-window {
   position: relative;
   width: min(560px, 86%);
-  height: 210px;
+  height: calc(var(--reel-item-height) * var(--reel-visible-rows));
   overflow: hidden;
   border: 4px solid rgba(248, 217, 121, .9);
   border-radius: 16px;
@@ -422,46 +425,60 @@ label span {
 
 .reel-track {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   will-change: transform;
 }
 
 .reel-item {
-  height: 70px;
+  height: var(--reel-item-height);
   min-height: 0;
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  padding: 4px 12px;
-  border-radius: 12px;
+  padding: 6px 14px;
   color: var(--green);
-  font-size: clamp(1.45rem, 3vw, 2.4rem);
+  font-size: clamp(1.75rem, 3.8vw, 3rem);
   font-weight: 900;
-  background: rgba(195, 59, 47, .08);
-  background-clip: content-box;
+  line-height: 1;
   overflow-wrap: anywhere;
 }
 
-.reel-item.is-target {
-  background: rgba(215, 167, 60, .24);
-  background-clip: content-box;
-  color: #7d2e28;
-  box-shadow: inset 0 0 0 2px rgba(215, 167, 60, .55);
+.reel-item-content {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background: rgba(195, 59, 47, .08);
+  padding: 0 .75rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.reel-item.is-target .reel-item-content {
+  border-color: rgba(215, 167, 60, .95);
+  background: rgba(215, 167, 60, .22);
+  color: #7e2d28;
+  box-shadow:
+    0 0 0 2px rgba(255, 250, 240, .85),
+    0 0 26px rgba(215, 167, 60, .55);
 }
 
 .slot-center-line {
   position: absolute;
-  left: 10px;
-  right: 10px;
+  left: 12px;
+  right: 12px;
   top: 50%;
-  height: 70px;
+  height: var(--reel-item-height);
   transform: translateY(-50%);
-  border: 3px solid rgba(215, 167, 60, .95);
-  border-radius: 14px;
+  border-radius: 18px;
+  background: rgba(215, 167, 60, .08);
   pointer-events: none;
-  z-index: 3;
+  z-index: 1;
   box-sizing: border-box;
-  box-shadow: 0 0 22px rgba(215, 167, 60, .5);
+  box-shadow: none;
 }
 
 .slot-mask-top,
@@ -470,7 +487,7 @@ label span {
   left: 0;
   right: 0;
   height: 38%;
-  z-index: 2;
+  z-index: 3;
   pointer-events: none;
 }
 
@@ -485,11 +502,11 @@ label span {
 }
 
 .machine.is-drawing .reel-track {
-  filter: blur(1px);
+  filter: none;
 }
 
 .machine.is-drawing .slot-center-line {
-  animation: slot-pulse .7s ease-in-out infinite alternate;
+  animation: none;
 }
 
 .winner {
@@ -694,7 +711,7 @@ tr:last-child td {
 
 .danger-zone {
   width: min(1180px, calc(100% - 2rem));
-  margin: 1.25rem auto 1.5rem;
+  margin: 1.25rem auto .6rem;
   padding: 1rem;
   border: 1px dashed rgba(195, 59, 47, .45);
   border-radius: 8px;
@@ -730,6 +747,15 @@ tr:last-child td {
 
 .danger-reset-button:hover {
   background: rgba(195, 59, 47, .1);
+}
+
+.app-version {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto 1.5rem;
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 800;
+  text-align: center;
 }
 
 @keyframes slot-pulse {
@@ -790,7 +816,7 @@ tr:last-child td {
   }
 
   .prize-panel {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: center;
   }
 
