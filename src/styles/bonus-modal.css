@@ -3,61 +3,160 @@
     position: fixed;
     inset: 0;
     z-index: 1000;
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-    background: rgba(12, 25, 21, .48);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 24px;
+    background: rgba(6, 18, 14, .58);
   }
 
   .bonus-modal {
-    width: min(620px, 100%);
-    max-height: calc(100vh - 2rem);
-    overflow: auto;
+    width: min(760px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    box-sizing: border-box;
+    background: #fffaf0 !important;
+    color: #0f2f2a;
+    border: 1px solid rgba(15, 47, 42, .18);
+    border-radius: 20px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
+    padding: 28px;
   }
 
   .bonus-modal header {
-    margin-bottom: 1rem;
+    margin-bottom: 22px;
   }
 
   .bonus-modal h2 {
-    margin: 0 0 .35rem;
-    color: var(--green);
-    font-size: 1.35rem;
-    line-height: 1.25;
+    margin: 0 0 8px;
+    color: #123c35;
+    font-size: 1.75rem;
+    font-weight: 900;
+    line-height: 1.2;
   }
 
   .bonus-modal p {
     margin: 0;
-    color: var(--muted);
+    color: rgba(15, 47, 42, .72);
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .bonus-modal form {
+    display: grid;
+    gap: 18px;
+  }
+
+  .bonus-modal .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .bonus-modal label {
+    display: grid;
+    gap: 8px;
+  }
+
+  .bonus-modal label.wide {
+    grid-column: 1 / -1;
+  }
+
+  .bonus-modal label span {
+    margin: 0;
+    color: rgba(15, 47, 42, .78);
+    font-size: .95rem;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
+  .bonus-modal input,
+  .bonus-modal textarea {
+    width: 100%;
+    min-height: 48px;
+    box-sizing: border-box;
+    border: 1px solid rgba(15, 47, 42, .22);
+    border-radius: 12px;
+    background: #fff;
+    color: #0f2f2a;
+    padding: 12px 14px;
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+
+  .bonus-modal input:focus,
+  .bonus-modal textarea:focus {
+    border-color: rgba(15, 47, 42, .5);
+    box-shadow: none;
+    outline: 3px solid rgba(217, 181, 73, .32);
   }
 
   .bonus-fixed-rules {
     display: flex;
     flex-wrap: wrap;
-    gap: .5rem;
-    margin: 1rem 0;
+    gap: 10px;
+    margin: 2px 0 0;
   }
 
   .bonus-fixed-rules span {
-    border: 1px solid rgba(22, 57, 47, .18);
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    border: 1px solid rgba(15, 47, 42, .18);
     border-radius: 999px;
-    background: rgba(47, 102, 89, .08);
-    color: var(--green);
-    font-size: .9rem;
+    background: #eef5e8;
+    color: #123c35;
+    font-size: .92rem;
     font-weight: 800;
-    padding: .42rem .68rem;
+    line-height: 1.2;
+    padding: 0 14px;
+  }
+
+  .bonus-modal .buttons {
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 6px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(15, 47, 42, .12);
+  }
+
+  .bonus-modal .buttons button {
+    min-height: 46px;
+    padding-inline: 18px;
   }
 }
 
 @media screen and (max-width: 720px) {
   .bonus-modal-backdrop {
-    align-items: end;
-    padding: .75rem;
+    align-items: flex-start;
+    padding: 16px;
   }
 
   .bonus-modal {
     width: 100%;
-    max-height: calc(100vh - 1.5rem);
+    max-height: calc(100vh - 32px);
+    border-radius: 16px;
+    padding: 20px;
+  }
+
+  .bonus-modal h2 {
+    font-size: 1.45rem;
+  }
+
+  .bonus-modal .form-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .bonus-modal .buttons {
+    flex-direction: column;
+  }
+
+  .bonus-modal .buttons button {
+    width: 100%;
   }
 }
 
