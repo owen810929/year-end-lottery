@@ -13,9 +13,10 @@ export type WinnerRow = {
 export async function gotoApp(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const originalSetTimeout = window.setTimeout.bind(window);
-    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+    const fastSetTimeout: typeof window.setTimeout = (handler, timeout, ...args) => {
       return originalSetTimeout(handler, Math.min(Number(timeout) || 0, 80), ...args);
-    }) as typeof window.setTimeout;
+    };
+    window.setTimeout = fastSetTimeout;
   });
 
   await page.goto("./", { waitUntil: "domcontentloaded" });
