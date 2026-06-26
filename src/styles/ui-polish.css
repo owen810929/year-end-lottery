@@ -226,7 +226,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 12mm;
   }
 
   .print-only,
@@ -289,9 +289,11 @@
 
   .print-sheet table,
   .print-table {
-    width: 100% !important;
-    max-width: 100% !important;
+    width: calc(100% - 2mm) !important;
+    max-width: calc(100% - 2mm) !important;
     min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: auto !important;
     border-collapse: collapse !important;
     table-layout: fixed !important;
     background: #fff !important;
@@ -318,11 +320,13 @@
     background: #eee !important;
     font-weight: 900 !important;
     text-align: center !important;
+    vertical-align: middle !important;
   }
 
   .print-sheet td,
   .print-table td {
     text-align: left !important;
+    vertical-align: middle !important;
   }
 
   .print-sheet th:nth-child(1),
@@ -330,14 +334,13 @@
   .print-table th:nth-child(1),
   .print-table td:nth-child(1) {
     width: 7% !important;
-    text-align: right !important;
   }
 
   .print-sheet th:nth-child(2),
   .print-sheet td:nth-child(2),
   .print-table th:nth-child(2),
   .print-table td:nth-child(2) {
-    width: 17% !important;
+    width: 16% !important;
   }
 
   .print-sheet th:nth-child(3),
@@ -345,35 +348,49 @@
   .print-table th:nth-child(3),
   .print-table td:nth-child(3) {
     width: 11% !important;
-    text-align: right !important;
   }
 
   .print-sheet th:nth-child(4),
   .print-sheet td:nth-child(4),
   .print-table th:nth-child(4),
   .print-table td:nth-child(4) {
-    width: 16% !important;
+    width: 15% !important;
   }
 
   .print-sheet th:nth-child(5),
   .print-sheet td:nth-child(5),
   .print-table th:nth-child(5),
   .print-table td:nth-child(5) {
-    width: 15% !important;
+    width: 14% !important;
   }
 
   .print-sheet th:nth-child(6),
   .print-sheet td:nth-child(6),
   .print-table th:nth-child(6),
   .print-table td:nth-child(6) {
-    width: 18% !important;
+    width: 20% !important;
   }
 
   .print-sheet th:nth-child(7),
   .print-sheet td:nth-child(7),
   .print-table th:nth-child(7),
   .print-table td:nth-child(7) {
-    width: 16% !important;
+    width: 17% !important;
+  }
+
+  .print-sheet td:nth-child(1),
+  .print-table td:nth-child(1) {
+    text-align: center !important;
+  }
+
+  .print-sheet td:nth-child(3),
+  .print-table td:nth-child(3) {
+    text-align: right !important;
+  }
+
+  .print-sheet td:last-child,
+  .print-table td:last-child {
+    text-align: left !important;
   }
 
   .print-sheet td:last-child,
