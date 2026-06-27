@@ -695,19 +695,17 @@ export default function App() {
     drawTimer.current = null;
     revealTimer.current = null;
 
-    const hasLockedSnapshot = lockedParticipants.length > 0 && lockedPrizes.length > 0;
-    if (!hasLockedSnapshot) {
-      setLockedParticipants([]);
-      setLockedPrizes([]);
-    }
-
+    setLockedParticipants([]);
+    setLockedPrizes([]);
     setWinners([]);
     setLatestBatchWinners([]);
     setLatestDrawBatch(null);
     moveToPrize(0);
-    setRemainingParticipantIds(hasLockedSnapshot ? lockedParticipants.map((person) => person.id) : []);
+    setRemainingParticipantIds([]);
+    setIsBonusPrizeOpen(false);
     clearReelState();
-    setLotteryStatus(hasLockedSnapshot ? 'locked' : validate(participants, prizes).length ? 'editing' : 'ready');
+    setLotteryStatus(validate(participants, prizes).length ? 'editing' : 'ready');
+    setActiveTab('lottery');
   }
 
   function resetProgress() {
