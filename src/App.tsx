@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 
 type Participant = { id: string; department: string; name: string; eligible: boolean };
 type PrizePoolMode = 'remaining' | 'allEligible';
-type Prize = { id: string; order: number; name: string; amount: number; quota: number; note?: string; poolMode: PrizePoolMode; removeAfterWin: boolean; drawHost?: string };
+type Prize = { id: string; order: number; name: string; amount: number; quota: number; note?: string; poolMode: PrizePoolMode; removeAfterWin: boolean; drawHost?: string; isBonus?: boolean };
 type Winner = { id: string; prizeId: string; prizeName: string; amount: number; participantId: string; department: string; name: string; drawnAt: string; poolMode?: PrizePoolMode; removeAfterWin?: boolean; drawHost?: string };
 type LotteryStatus = 'editing' | 'ready' | 'locked' | 'drawing' | 'revealing' | 'completed';
 type ReelPhase = 'idle' | 'resetting' | 'spinning' | 'settled';
@@ -133,6 +133,7 @@ function normalizePrize(prize: Partial<Prize>, fallbackIndex = 0): Prize {
     poolMode,
     removeAfterWin,
     drawHost: prize.drawHost ?? '',
+    isBonus: Boolean(prize.isBonus),
   };
 }
 
@@ -694,7 +695,9 @@ export default function App() {
     if (revealTimer.current) window.clearTimeout(revealTimer.current);
     drawTimer.current = null;
     revealTimer.current = null;
+    const prizesAfterReset = prizes.filter((prize) => prize.isBonus !== true);
 
+    setPrizes((items) => items.filter((prize) => prize.isBonus !== true));
     setLockedParticipants([]);
     setLockedPrizes([]);
     setWinners([]);
@@ -704,7 +707,7 @@ export default function App() {
     setRemainingParticipantIds([]);
     setIsBonusPrizeOpen(false);
     clearReelState();
-    setLotteryStatus(validate(participants, prizes).length ? 'editing' : 'ready');
+    setLotteryStatus(validate(participants, prizesAfterReset).length ? 'editing' : 'ready');
     setActiveTab('lottery');
   }
 
@@ -780,6 +783,7 @@ export default function App() {
       note: input.note.trim() || '現場加碼',
       poolMode: 'allEligible',
       removeAfterWin: false,
+      isBonus: true,
     });
     const nextLockedPrizes = [...lockedPrizes, bonusPrize];
 
